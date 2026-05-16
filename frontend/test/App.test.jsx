@@ -63,8 +63,8 @@ describe('App', () => {
 			expect(screen.getByText(/Existing Task/)).toBeInTheDocument();
 		});
 
-		// Klick auf den Delete-Button (Checkmark)
-		const deleteButton = screen.getByRole('button', { name: /✓/i });
+		// Klick auf den Delete-Button. Im Frontend wird dafuer das Checkmark-Zeichen "✔" gerendert.
+		const deleteButton = screen.getByRole('button', { name: '✔' });
 		await user.click(deleteButton);
 
 		// Verifiziere, dass der DELETE-Request korrekt erfolgt ist
