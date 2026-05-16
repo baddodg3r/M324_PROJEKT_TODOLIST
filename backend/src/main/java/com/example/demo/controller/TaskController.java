@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,27 +38,39 @@ public class TaskController {
 
 	@CrossOrigin
 	@PostMapping("/tasks")
-	public String addTask(@RequestBody TaskDTO taskDTO) {
+	public ResponseEntity<String> addTask(@RequestBody TaskDTO taskDTO) {
+		if (isBlank(taskDTO.getTaskdescription())) {
+			// Ohne Tasktext soll kein Task erstellt und nicht gespeichert werden.
+			return ResponseEntity.badRequest().body("taskdescription is required");
+		}
 		System.out.println("API EP '/tasks': '" + taskDTO.getTaskdescription() + "'");
 		taskService.addTask(toTask(taskDTO));
-		return "redirect:/";
+		return ResponseEntity.ok("redirect:/");
 	}
 
 	@CrossOrigin
 	@PostMapping("/update")
-	public String updateTask(@RequestBody TaskUpdateDTO updateRequest) {
+	public ResponseEntity<String> updateTask(@RequestBody TaskUpdateDTO updateRequest) {
+		if (isBlank(updateRequest.getOldTaskdescription()) || isBlank(updateRequest.getTaskdescription())) {
+			// Fuer ein Update braucht es den alten Tasktext zum Suchen und den neuen Text zum Speichern.
+			return ResponseEntity.badRequest().body("oldTaskdescription and taskdescription are required");
+		}
 		System.out.println("API EP '/update': '" + updateRequest.getOldTaskdescription() + "' -> '"
 				+ updateRequest.getTaskdescription() + "'");
 		taskService.updateTask(updateRequest);
-		return "redirect:/";
+		return ResponseEntity.ok("redirect:/");
 	}
 
 	@CrossOrigin
 	@PostMapping("/delete")
-	public String deleteTask(@RequestBody TaskDTO taskDTO) {
+	public ResponseEntity<String> deleteTask(@RequestBody TaskDTO taskDTO) {
+		if (isBlank(taskDTO.getTaskdescription())) {
+			// Ohne Tasktext weiss das Backend nicht, welcher Task geloescht werden soll.
+			return ResponseEntity.badRequest().body("taskdescription is required");
+		}
 		System.out.println("API EP '/delete': '" + taskDTO.getTaskdescription() + "'");
 		taskService.deleteTask(toTask(taskDTO));
-		return "redirect:/";
+		return ResponseEntity.ok("redirect:/");
 	}
 
 	private TaskDTO toDTO(Task task) {
@@ -70,6 +83,10 @@ public class TaskController {
 		Task task = new Task();
 		task.setTaskdescription(taskDTO.getTaskdescription());
 		return task;
+	}
+
+	private boolean isBlank(String value) {
+		return value == null || value.trim().isEmpty();
 	}
 
 }
