@@ -18,4 +18,11 @@ class TaskTests {
 		assertEquals("Test Task", task.getTaskdescription());
 	}
 
+	@Test
+	void taskdescriptionCanBeSetWithConstructor() {
+		Task task = new Task("Constructor Task");
+
+		assertEquals("Constructor Task", task.getTaskdescription());
+	}
+
 }
