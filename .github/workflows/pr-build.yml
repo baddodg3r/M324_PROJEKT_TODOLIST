@@ -17,6 +17,10 @@ on:
   # Erlaubt zusätzlich einen manuellen Start über GitHub Actions.
   workflow_dispatch:
 
+# Der Checkout-Step braucht Leserechte auf den Repository-Inhalt.
+permissions:
+  contents: read
+
 jobs:
   # Job für den Frontend-Build.
   frontend-build:
