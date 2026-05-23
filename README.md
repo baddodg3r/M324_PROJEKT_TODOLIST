@@ -75,6 +75,8 @@ mvn test
 mvn -B clean package
 ```
 
+Der Backend-Build erzeugt aktuell eine ausführbare Spring-Boot-JAR. In `backend/pom.xml` ist kein `<packaging>war</packaging>` gesetzt, daher verwendet Maven das Standard-Packaging `jar`. Das passt zur aktuellen Anwendung, weil Spring Boot mit eingebettetem Tomcat direkt gestartet werden kann. Eine WAR-Datei waere nur noetig, wenn das Backend in einen externen Servlet-Container wie Tomcat deployt werden soll.
+
 ## REST-API
 
 ```text
@@ -129,6 +131,6 @@ Der Workflow [pr-build.yml](.github/workflows/pr-build.yml) baut Frontend und Ba
 Nach erfolgreichem Lauf werden Build-Artefakte hochgeladen:
 
 - `frontend-dist`
-- `backend-jar`
+- `backend-jar` mit der erzeugten Spring-Boot-JAR aus `backend/target/*.jar`
 
 Diese liegen im GitHub Actions Lauf unter `Artifacts` als ZIP-Download bereit.

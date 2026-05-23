@@ -263,6 +263,24 @@ Ergebnis:
 backend/target/*.jar
 ```
 
+### Warum eine JAR und keine WAR?
+
+Das Backend erzeugt aktuell eine ausführbare Spring-Boot-JAR.
+
+Der Grund ist die Maven-Konfiguration in `backend/pom.xml`: Es gibt dort kein explizites Packaging wie:
+
+```xml
+<packaging>war</packaging>
+```
+
+Ohne explizites Packaging verwendet Maven standardmaessig `jar`. Das passt zur aktuellen Architektur, weil die Anwendung als eigenstaendige Spring-Boot-App mit eingebettetem Tomcat laeuft. Die Startklasse `DemoApplication` enthaelt eine normale `main`-Methode:
+
+```java
+SpringApplication.run(DemoApplication.class, args);
+```
+
+Eine WAR-Datei waere dann sinnvoll, wenn das Backend nicht selbststaendig laufen soll, sondern in einen externen Servlet-Container wie Tomcat auf einer VM deployed wird. Dafuer muesste das Projekt gezielt auf WAR-Packaging umgestellt werden, typischerweise mit `<packaging>war</packaging>` und einer passenden Servlet-Initialisierung.
+
 ## GitHub Actions
 
 Der Workflow liegt in:
