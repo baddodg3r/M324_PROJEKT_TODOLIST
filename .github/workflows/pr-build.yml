@@ -58,6 +58,14 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # Lädt den erzeugten Frontend-Build als GitHub Actions Artefakt hoch.
+      # Dadurch kann der dist-Ordner nach dem Workflow heruntergeladen werden.
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
   # Job für den Backend-Build.
   backend-build:
     name: Build Backend
@@ -92,3 +100,11 @@ jobs:
       # Der Maven Wrapper ist hier nicht nötig und kann sonst an seinem Maven-Download scheitern.
       - name: Build backend with Maven
         run: mvn -B clean package
+
+      # Lädt die erzeugte JAR-Datei als GitHub Actions Artefakt hoch.
+      # Dadurch kann das Backend-Build-Ergebnis nach dem Workflow heruntergeladen werden.
+      - name: Upload backend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
