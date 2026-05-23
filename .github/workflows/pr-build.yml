@@ -1,0 +1,94 @@
+# Name des Workflows.
+# Dieser Name erscheint in GitHub unter "Actions" als Workflow-Gruppe.
+name: Build Frontend and Backend
+
+# Name eines konkreten Workflow-Durchlaufs.
+# Dadurch sieht man direkt, auf welchem Branch und durch wen der Build gestartet wurde.
+run-name: Build ${{ github.ref_name }} by ${{ github.actor }}
+
+# Definiert, wann der Workflow gestartet wird.
+on:
+  # Der Workflow läuft automatisch bei einem Push.
+  push:
+    branches:
+      # Build wird bei Pushes auf den main-Branch gestartet.
+      - main
+
+  # Erlaubt zusätzlich einen manuellen Start über GitHub Actions.
+  workflow_dispatch:
+
+jobs:
+  # Job für den Frontend-Build.
+  frontend-build:
+    name: Build Frontend
+
+    # Feste Ubuntu-Version statt ubuntu-latest.
+    # Dadurch bleibt die Build-Umgebung reproduzierbarer.
+    runs-on: ubuntu-24.04
+
+    # Alle run-Befehle in diesem Job werden im frontend-Verzeichnis ausgeführt.
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      # Holt den aktuellen Repository-Stand in den GitHub Actions Runner.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Richtet Node.js für den Frontend-Build ein.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node-Version für das Frontend.
+          node-version: 22
+
+          # Aktiviert npm-Caching, damit wiederholte Builds schneller laufen.
+          cache: npm
+
+          # Gibt an, welche Lock-Datei für den Cache verwendet wird.
+          cache-dependency-path: frontend/package-lock.json
+
+      # Installiert die Frontend-Abhängigkeiten exakt anhand der package-lock.json.
+      # npm ci ist für CI-Umgebungen besser geeignet als npm install.
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # Baut das Vite/React-Frontend.
+      - name: Build frontend
+        run: npm run build
+
+  # Job für den Backend-Build.
+  backend-build:
+    name: Build Backend
+
+    # Feste Ubuntu-Version statt ubuntu-latest.
+    runs-on: ubuntu-24.04
+
+    # Alle run-Befehle in diesem Job werden im backend-Verzeichnis ausgeführt.
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      # Holt den aktuellen Repository-Stand in den GitHub Actions Runner.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Richtet Java für den Maven-Build ein.
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          # Temurin ist eine verbreitete OpenJDK-Distribution.
+          distribution: temurin
+
+          # Das Backend läuft mit Java 17, daher wird auch in der Pipeline Java 17 verwendet.
+          java-version: 17
+
+          # Aktiviert Maven-Caching für schnellere Builds.
+          cache: maven
+
+      # Baut das Backend mit dem Maven Wrapper aus dem Projekt.
+      # Dadurch wird nicht vorausgesetzt, dass Maven direkt auf dem Runner installiert ist.
+      - name: Build backend with Maven wrapper
+        run: ./mvnw clean package
