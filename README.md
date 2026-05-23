@@ -8,7 +8,7 @@ Das Frontend läuft lokal auf Port `5173` und spricht das Backend unter `http://
 
 ```text
 M324_PROJEKT_TODOLIST/
-├── .github/workflows/pr-build.yml   GitHub Actions Build fuer Frontend und Backend
+├── .github/workflows/pr-build.yml   GitHub Actions Build für Frontend und Backend
 ├── backend/                         Spring-Boot-Backend
 │   ├── src/main/java/...             Controller, DTOs, Model und Services
 │   ├── src/test/java/...             Backend-Tests
@@ -75,7 +75,7 @@ mvn test
 mvn -B clean package
 ```
 
-Der Backend-Build erzeugt aktuell eine ausführbare Spring-Boot-JAR. In `backend/pom.xml` ist kein `<packaging>war</packaging>` gesetzt, daher verwendet Maven das Standard-Packaging `jar`. Das passt zur aktuellen Anwendung, weil Spring Boot mit eingebettetem Tomcat direkt gestartet werden kann. Eine WAR-Datei waere nur noetig, wenn das Backend in einen externen Servlet-Container wie Tomcat deployt werden soll.
+Der Backend-Build erzeugt aktuell eine ausführbare Spring-Boot-JAR. In `backend/pom.xml` ist kein `<packaging>war</packaging>` gesetzt, daher verwendet Maven das Standard-Packaging `jar`. Das passt zur aktuellen Anwendung, weil Spring Boot mit eingebettetem Tomcat direkt gestartet werden kann. Eine WAR-Datei wäre nur nötig, wenn das Backend in einen externen Servlet-Container wie Tomcat deployt werden soll.
 
 ## REST-API
 
@@ -107,7 +107,7 @@ Beispiel zum Bearbeiten:
 
 ## Speicherung
 
-Tasks werden beim Start aus einer JSON-Datei geladen und nach Erstellen, Bearbeiten oder Loeschen wieder gespeichert.
+Tasks werden beim Start aus einer JSON-Datei geladen und nach Erstellen, Bearbeiten oder Löschen wieder gespeichert.
 
 Der Speicherpfad ist im Backend relativ zum aktuellen Arbeitsverzeichnis definiert:
 

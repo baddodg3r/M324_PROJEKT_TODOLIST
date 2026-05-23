@@ -53,7 +53,7 @@ M324_PROJEKT_TODOLIST/
     └── test/
 ```
 
-Das alte Verzeichnis `backend/bin/` wurde entfernt. Es enthielt eine veraltete Kopie des Backend-Projekts mit alter Java-17-Konfiguration und gehoert nicht zur aktuellen Anwendung.
+Das alte Verzeichnis `backend/bin/` wurde entfernt. Es enthielt eine veraltete Kopie des Backend-Projekts mit alter Java-17-Konfiguration und gehört nicht zur aktuellen Anwendung.
 
 ## Backend
 
@@ -104,7 +104,7 @@ POST /delete
 
 ```json
 {
-  "taskdescription": "Zu loeschender Task"
+  "taskdescription": "Zu löschender Task"
 }
 ```
 
@@ -117,9 +117,9 @@ Die Fachlogik liegt in `TaskService`.
 Aktuelles Verhalten:
 
 - Beim Start werden gespeicherte Tasks aus der JSON-Datei geladen.
-- Neue Tasks werden nur hinzugefuegt, wenn noch kein Task mit derselben `taskdescription` existiert.
+- Neue Tasks werden nur hinzugefügt, wenn noch kein Task mit derselben `taskdescription` existiert.
 - Updates werden ignoriert, wenn der neue Text bereits bei einem anderen Task existiert.
-- Nach Erstellen, Bearbeiten und Loeschen wird die komplette Liste gespeichert.
+- Nach Erstellen, Bearbeiten und Löschen wird die komplette Liste gespeichert.
 
 Die Eindeutigkeit wird aktuell über `taskdescription` hergestellt. Es gibt keine technische Task-ID.
 
@@ -146,7 +146,7 @@ wird deshalb diese Datei verwendet:
 backend/data/tasks.json
 ```
 
-Wenn das Backend aus einem anderen Arbeitsverzeichnis gestartet wird, kann entsprechend eine andere `data/tasks.json` verwendet werden. Im Repository existiert auch `data/tasks.json` im Projektroot; diese Datei gehoert zu Starts aus dem Root-Verzeichnis und ist nicht dieselbe Datei wie `backend/data/tasks.json`.
+Wenn das Backend aus einem anderen Arbeitsverzeichnis gestartet wird, kann entsprechend eine andere `data/tasks.json` verwendet werden. Im Repository existiert auch `data/tasks.json` im Projektroot; diese Datei gehört zu Starts aus dem Root-Verzeichnis und ist nicht dieselbe Datei wie `backend/data/tasks.json`.
 
 Die Speicherung ist dateibasiert, nicht datenbankbasiert. Der MySQL-Connector ist zwar in `pom.xml` eingetragen, aber es gibt aktuell keine aktive Datasource-Konfiguration, keine Entity, kein Repository und keine JDBC-/JPA-Logik.
 
@@ -155,7 +155,7 @@ Konsequenzen:
 - Tasks bleiben nach einem normalen Backend-Neustart erhalten, solange dieselbe JSON-Datei verwendet wird.
 - Die komplette Liste wird bei jeder Änderung neu geschrieben.
 - Parallele Schreibzugriffe mehrerer Backend-Instanzen sind nicht abgesichert.
-- Die Speicherung ist fuer ein Schul-/Demo-Projekt geeignet, aber keine robuste Produktionspersistenz.
+- Die Speicherung ist für ein Schul-/Demo-Projekt geeignet, aber keine robuste Produktionspersistenz.
 
 ## Frontend
 
@@ -185,7 +185,7 @@ Das Frontend:
 
 Der Update-Endpoint existiert im Backend, wird im aktuellen Frontend aber noch nicht verwendet.
 
-Nach Erstellen oder Loeschen setzt das Frontend `window.location.href = "/"`. Dadurch wird die Seite neu geladen und die Liste erneut vom Backend abgefragt.
+Nach Erstellen oder Löschen setzt das Frontend `window.location.href = "/"`. Dadurch wird die Seite neu geladen und die Liste erneut vom Backend abgefragt.
 
 Wenn das Backend nicht läuft, schlagen die Fetch-Requests fehl. Das Frontend loggt den Fehler in der Browser-Konsole, zeigt aber aktuell keine eigene Fehlermeldung in der UI an.
 
@@ -203,9 +203,9 @@ Wichtig:
 
 Wenn mehrere Backend-Instanzen parallel laufen, hat jede Instanz ihre eigene Task-Liste im Speicher.
 
-Wenn mehrere Instanzen dieselbe `data/tasks.json` verwenden, koennen Schreibkonflikte entstehen, weil die Datei ohne Locking komplett neu geschrieben wird. Wenn jede Instanz in einem anderen Arbeitsverzeichnis läuft, verwendet sie vermutlich eine eigene JSON-Datei.
+Wenn mehrere Instanzen dieselbe `data/tasks.json` verwenden, können Schreibkonflikte entstehen, weil die Datei ohne Locking komplett neu geschrieben wird. Wenn jede Instanz in einem anderen Arbeitsverzeichnis läuft, verwendet sie vermutlich eine eigene JSON-Datei.
 
-Für Load Balancing oder produktive Nutzung waere eine echte Datenbank mit sauberer Transaktionslogik nötig.
+Für Load Balancing oder produktive Nutzung wäre eine echte Datenbank mit sauberer Transaktionslogik nötig.
 
 ## Tests
 
@@ -273,13 +273,13 @@ Der Grund ist die Maven-Konfiguration in `backend/pom.xml`: Es gibt dort kein ex
 <packaging>war</packaging>
 ```
 
-Ohne explizites Packaging verwendet Maven standardmaessig `jar`. Das passt zur aktuellen Architektur, weil die Anwendung als eigenstaendige Spring-Boot-App mit eingebettetem Tomcat laeuft. Die Startklasse `DemoApplication` enthaelt eine normale `main`-Methode:
+Ohne explizites Packaging verwendet Maven standardmäßig `jar`. Das passt zur aktuellen Architektur, weil die Anwendung als eigenständige Spring-Boot-App mit eingebettetem Tomcat läuft. Die Startklasse `DemoApplication` enthält eine normale `main`-Methode:
 
 ```java
 SpringApplication.run(DemoApplication.class, args);
 ```
 
-Eine WAR-Datei waere dann sinnvoll, wenn das Backend nicht selbststaendig laufen soll, sondern in einen externen Servlet-Container wie Tomcat auf einer VM deployed wird. Dafuer muesste das Projekt gezielt auf WAR-Packaging umgestellt werden, typischerweise mit `<packaging>war</packaging>` und einer passenden Servlet-Initialisierung.
+Eine WAR-Datei wäre dann sinnvoll, wenn das Backend nicht selbstständig laufen soll, sondern in einen externen Servlet-Container wie Tomcat auf einer VM deployed wird. Dafür müsste das Projekt gezielt auf WAR-Packaging umgestellt werden, typischerweise mit `<packaging>war</packaging>` und einer passenden Servlet-Initialisierung.
 
 ## GitHub Actions
 
@@ -314,7 +314,7 @@ und nicht:
 ./mvnw clean package
 ```
 
-Grund: Der Maven Wrapper ist fuer den CI-Build nicht notwendig und kann beim Download der konfigurierten Maven-Version mit HTTP 403 scheitern. Auf dem GitHub-hosted Runner ist Maven bereits installiert.
+Grund: Der Maven Wrapper ist für den CI-Build nicht notwendig und kann beim Download der konfigurierten Maven-Version mit HTTP 403 scheitern. Auf dem GitHub-hosted Runner ist Maven bereits installiert.
 
 Nach erfolgreichen Builds werden diese Artefakte hochgeladen:
 
@@ -336,8 +336,8 @@ Sie sind im jeweiligen GitHub Actions Lauf unten im Bereich `Artifacts` als ZIP-
 
 ## Sinnvolle nächste Schritte
 
-1. Task-ID einfuehren, damit gleiche Beschreibungen moeglich werden.
-2. Bearbeiten-Funktion im Frontend an den `/update`-Endpoint anschliessen.
+1. Task-ID einführen, damit gleiche Beschreibungen möglich werden.
+2. Bearbeiten-Funktion im Frontend an den `/update`-Endpoint anschließen.
 3. Fehlerzustände im Frontend sichtbar anzeigen.
 4. Speicherpfad konfigurierbar machen, zum Beispiel per Spring Property.
 5. MySQL-Abhängigkeit entfernen oder echte Datenbankpersistenz mit Spring Data JPA implementieren.
