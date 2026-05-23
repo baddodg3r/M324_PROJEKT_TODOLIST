@@ -1,41 +1,134 @@
-# Kurzanleitung für die Installation der Entwicklungsumgebung zum Basisprojekt im Modul 324
+# M324 ToDo-Liste
 
-## TLDR
+ToDo-Anwendung mit React/Vite-Frontend und Spring-Boot-Backend.
 
-ToDo-Liste mit React (frontend) und Spring (backend). Weitere Details sind in den
-Kommentaren vor allem in App.js zu finden.
+Das Frontend läuft lokal auf Port `5173` und spricht das Backend unter `http://localhost:8080` an. Das Backend stellt eine einfache REST-API bereit und speichert Tasks als JSON-Datei.
 
-**Liebe Lernende, bitte FORKT dieses Repo für M324, und macht die Pull-Requests in euren FORKS.**
+## Projektstruktur
 
-## Relevante Dateien in den Teil-Projekten (Verzeichnisse):
+```text
+M324_PROJEKT_TODOLIST/
+├── .github/workflows/pr-build.yml   GitHub Actions Build fuer Frontend und Backend
+├── backend/                         Spring-Boot-Backend
+│   ├── src/main/java/...             Controller, DTOs, Model und Services
+│   ├── src/test/java/...             Backend-Tests
+│   ├── data/tasks.json               lokale Task-Daten bei Start aus backend/
+│   └── pom.xml                       Maven-Projekt, Java 21
+├── frontend/                        React/Vite-Frontend
+│   ├── src/App.jsx                   Hauptkomponente
+│   ├── test/                         Frontend-Tests
+│   └── package.json                  npm-Skripte
+└── PROJEKT_DOKUMENTATION.md          technische Projektdokumentation
+```
 
-1. diese Beschreibung
-2. frontend (Tools: npm und VSCode)
-	* App.js
+## Voraussetzungen
 
-3. backend (Eclipse oder VS-Code)
-	* DemoApplication.java
-	* Task.java
-	* pom.xml (JAR configuration, mit div. Plugins s.u.)
+- Java 21
+- Maven
+- Node.js 22 oder kompatibel
+- npm
 
-## Inbetriebnahme
+Der Maven Wrapper liegt noch im Backend, wird im GitHub Actions Workflow aber nicht mehr verwendet. Der CI-Build nutzt das auf dem GitHub-Runner installierte Maven, weil der Wrapper-Download von Maven `3.8.6` mit HTTP 403 fehlschlagen kann.
 
-1. forken oder clonen
-1. *backend* in Eclipse importieren und mit Maven starten, oder in VS-Code via Java Extension Pack. Ohne Persistenz - nach dem Serverneustart sind die Todos futsch. Läuft auf default port 8080.
-2. Im Terminal im *frontend* Verzeichnis
-	1. mit `npm install` benötige Module laden
-	2. mit `npm run dev` den Frontend-Server starten
+## Backend starten
 
-## Benutzung
+```sh
+cd backend
+mvn spring-boot:run
+```
 
-1. http://localhost:5173 zeigt das Frontend an. Hier kann man Tasks eingeben, die sofort darunter in der Liste mit einem *Done*-Button angezeigt werden.
-2. Klickt man auf den *Done*-Button eines Tasks wird dieser aus der Liste entfernt (und natürlich auch von Backend-Server).
-3. Die Task Beschreibungen müssen eindeutig (bzw. einmalig) sein.
+Das Backend startet auf:
 
-### Anstehende Aufgaben
+```text
+http://localhost:8080
+```
 
-- Erweiterung der Funktionalität durch die Lernenden
-- Alternatives Backend für eine VM (WAR Konfiguration)
-- Test Umbegung mit Unit-Tests erweitern
+## Frontend starten
 
-(Ausgaben für white-box debugging sind bereits auf den beiden Server vorhanden)
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+Das Frontend ist danach normalerweise erreichbar unter:
+
+```text
+http://localhost:5173
+```
+
+## Tests und Builds
+
+Frontend:
+
+```sh
+cd frontend
+npm test
+npm run build
+```
+
+Backend:
+
+```sh
+cd backend
+mvn test
+mvn -B clean package
+```
+
+## REST-API
+
+```text
+GET  /
+POST /tasks
+POST /update
+POST /delete
+```
+
+Die API verwendet weiterhin das JSON-Feld `taskdescription`.
+
+Beispiel zum Erstellen:
+
+```json
+{
+  "taskdescription": "Dokumentation aktualisieren"
+}
+```
+
+Beispiel zum Bearbeiten:
+
+```json
+{
+  "oldTaskdescription": "Alte Beschreibung",
+  "taskdescription": "Neue Beschreibung"
+}
+```
+
+## Speicherung
+
+Tasks werden beim Start aus einer JSON-Datei geladen und nach Erstellen, Bearbeiten oder Loeschen wieder gespeichert.
+
+Der Speicherpfad ist im Backend relativ zum aktuellen Arbeitsverzeichnis definiert:
+
+```text
+data/tasks.json
+```
+
+Wenn das Backend mit `cd backend && mvn spring-boot:run` gestartet wird, verwendet es also:
+
+```text
+backend/data/tasks.json
+```
+
+## GitHub Actions
+
+Der Workflow [pr-build.yml](.github/workflows/pr-build.yml) baut Frontend und Backend getrennt:
+
+- Frontend: Node.js 22, `npm ci`, `npm run build`
+- Backend: Java 21, `mvn -B clean package`
+
+Nach erfolgreichem Lauf werden Build-Artefakte hochgeladen:
+
+- `frontend-dist`
+- `backend-jar`
+
+Diese liegen im GitHub Actions Lauf unter `Artifacts` als ZIP-Download bereit.

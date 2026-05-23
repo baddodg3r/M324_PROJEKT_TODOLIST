@@ -1,107 +1,165 @@
 # Projekt-Dokumentation: ToDo-Liste
 
-Diese Dokumentation beschreibt, wie Frontend und Backend gestartet werden, wie die Anwendung Daten verarbeitet und warum Tasks verloren gehen, sobald das Backend beendet oder neu gestartet wird.
+Diese Dokumentation beschreibt den aktuellen Stand der ToDo-Anwendung im Repository. Sie ist gegen den Code in `frontend/`, `backend/` und `.github/workflows/pr-build.yml` abgeglichen.
+
+## Überblick
+
+Die Anwendung besteht aus zwei Teilen:
+
+- `frontend/`: React 19 mit Vite 6
+- `backend/`: Spring Boot 3.4.5 mit Java 21
+
+Das Frontend zeigt eine ToDo-Liste an und sendet HTTP-Requests direkt an das Backend unter `http://localhost:8080`. Das Backend verwaltet Tasks in einer Liste und speichert diese Liste als JSON-Datei.
+
+## Voraussetzungen
+
+Für lokale Entwicklung:
+
+- Java 21
+- Maven
+- Node.js 22 oder kompatibel
+- npm
+
+Der Backend-Build ist in `backend/pom.xml` auf Java 21 konfiguriert:
+
+```xml
+<java.version>21</java.version>
+```
 
 ## Projektstruktur
 
 ```text
 M324_PROJEKT_TODOLIST/
-├── backend/    Spring-Boot-Backend mit REST-API
-└── frontend/   React/Vite-Frontend
+├── README.md
+├── PROJEKT_DOKUMENTATION.md
+├── .github/workflows/pr-build.yml
+├── backend/
+│   ├── pom.xml
+│   ├── data/tasks.json
+│   └── src/
+│       ├── main/java/com/example/demo/
+│       │   ├── DemoApplication.java
+│       │   ├── controller/TaskController.java
+│       │   ├── dto/TaskDTO.java
+│       │   ├── dto/TaskUpdateDTO.java
+│       │   ├── model/Task.java
+│       │   └── service/
+│       │       ├── TaskService.java
+│       │       └── TaskStorageService.java
+│       └── test/java/com/example/demo/
+└── frontend/
+    ├── package.json
+    ├── src/App.jsx
+    └── test/
 ```
 
-Das Frontend ist eine React-Anwendung. Das Backend ist eine Spring-Boot-Anwendung, die eine einfache REST-API bereitstellt.
+Das alte Verzeichnis `backend/bin/` wurde entfernt. Es enthielt eine veraltete Kopie des Backend-Projekts mit alter Java-17-Konfiguration und gehoert nicht zur aktuellen Anwendung.
 
-## Voraussetzungen
+## Backend
 
-Für das Backend:
-
-- Java 17
-- Maven oder der mitgelieferte Maven Wrapper
-
-Für das Frontend:
-
-- Node.js
-- npm
-
-## Backend starten
-
-Das Backend wurde erfolgreich mit lokal installiertem Maven gestartet.
-
-Vom Projektroot aus:
+### Start
 
 ```sh
 cd backend
 mvn spring-boot:run
 ```
 
-Beim ersten Start lädt Maven benötigte Abhängigkeiten aus Maven Central herunter. Danach startet Spring Boot das Backend auf Port `8080`.
-
-Erfolgreicher Start ist an diesen Logzeilen erkennbar:
-
-```text
-Tomcat started on port 8080 (http) with context path '/'
-Started DemoApplication
-```
-
-Während das Backend läuft, sieht man im Terminal auch die API-Aufrufe des Frontends, zum Beispiel:
-
-```text
-API EP '/' returns task-list of size 0.
-API EP '/tasks': '{"taskdescription":"TEster"}'
-...adding task: 'TEster'
-API EP '/' returns task-list of size 1.
--task 1:TEster
-API EP '/delete': '{"taskdescription":"TEster"}'
-...deleting task: 'TEster'
-```
-
-Das Backend wird mit `Ctrl+C` beendet. Wenn Spring Boot sauber herunterfährt, erscheinen Logs wie:
-
-```text
-Graceful shutdown complete
-BUILD SUCCESS
-```
-
-Alternative mit Maven Wrapper:
-
-```sh
-cd backend
-./mvnw spring-boot:run
-```
-
-Falls `./mvnw` nicht ausführbar ist:
-
-```sh
-cd backend
-sh mvnw spring-boot:run
-```
-
-Falls beim Start eine Fehlermeldung zu `.mvn/wrapper/maven-wrapper.properties`, `maven-wrapper.jar` oder `org.apache.maven.wrapper.MavenWrapperMain` erscheint, fehlen die Maven-Wrapper-Dateien im Backend. Der Wrapper erwartet diese Dateien unter:
-
-```text
-backend/.mvn/wrapper/
-```
-
-In diesem Projekt wurden die fehlenden Dateien aus `backend/bin/.mvn/wrapper/` nach `backend/.mvn/wrapper/` kopiert. Danach funktioniert `./mvnw spring-boot:run` im Ordner `backend`.
-
-Das Backend läuft standardmässig auf:
+Das Backend läuft danach unter:
 
 ```text
 http://localhost:8080
 ```
 
-Wichtige Endpoints:
+### API
+
+Der Controller `TaskController` stellt diese Endpoints bereit:
 
 ```text
-GET  http://localhost:8080/
-POST http://localhost:8080/tasks
-POST http://localhost:8080/delete
+GET  /
+POST /tasks
+POST /update
+POST /delete
 ```
 
-## Frontend starten
+`GET /` gibt alle Tasks als Liste von DTOs zurück.
 
-Vom Projektroot aus:
+`POST /tasks` erstellt einen Task. Erwarteter Body:
+
+```json
+{
+  "taskdescription": "Neuer Task"
+}
+```
+
+`POST /update` bearbeitet einen bestehenden Task. Erwarteter Body:
+
+```json
+{
+  "oldTaskdescription": "Alter Text",
+  "taskdescription": "Neuer Text"
+}
+```
+
+`POST /delete` löscht einen Task. Erwarteter Body:
+
+```json
+{
+  "taskdescription": "Zu loeschender Task"
+}
+```
+
+Leere Tasktexte werden vom Controller mit `400 Bad Request` abgelehnt.
+
+### Fachlogik
+
+Die Fachlogik liegt in `TaskService`.
+
+Aktuelles Verhalten:
+
+- Beim Start werden gespeicherte Tasks aus der JSON-Datei geladen.
+- Neue Tasks werden nur hinzugefuegt, wenn noch kein Task mit derselben `taskdescription` existiert.
+- Updates werden ignoriert, wenn der neue Text bereits bei einem anderen Task existiert.
+- Nach Erstellen, Bearbeiten und Loeschen wird die komplette Liste gespeichert.
+
+Die Eindeutigkeit wird aktuell über `taskdescription` hergestellt. Es gibt keine technische Task-ID.
+
+## Speicherung
+
+Die Persistenz liegt in `TaskStorageService`.
+
+Der konfigurierte Speicherpfad lautet:
+
+```text
+data/tasks.json
+```
+
+Dieser Pfad ist relativ zum Arbeitsverzeichnis des Backend-Prozesses. Bei normalem Start mit:
+
+```sh
+cd backend
+mvn spring-boot:run
+```
+
+wird deshalb diese Datei verwendet:
+
+```text
+backend/data/tasks.json
+```
+
+Wenn das Backend aus einem anderen Arbeitsverzeichnis gestartet wird, kann entsprechend eine andere `data/tasks.json` verwendet werden. Im Repository existiert auch `data/tasks.json` im Projektroot; diese Datei gehoert zu Starts aus dem Root-Verzeichnis und ist nicht dieselbe Datei wie `backend/data/tasks.json`.
+
+Die Speicherung ist dateibasiert, nicht datenbankbasiert. Der MySQL-Connector ist zwar in `pom.xml` eingetragen, aber es gibt aktuell keine aktive Datasource-Konfiguration, keine Entity, kein Repository und keine JDBC-/JPA-Logik.
+
+Konsequenzen:
+
+- Tasks bleiben nach einem normalen Backend-Neustart erhalten, solange dieselbe JSON-Datei verwendet wird.
+- Die komplette Liste wird bei jeder Änderung neu geschrieben.
+- Parallele Schreibzugriffe mehrerer Backend-Instanzen sind nicht abgesichert.
+- Die Speicherung ist fuer ein Schul-/Demo-Projekt geeignet, aber keine robuste Produktionspersistenz.
+
+## Frontend
+
+### Start
 
 ```sh
 cd frontend
@@ -109,230 +167,159 @@ npm install
 npm run dev
 ```
 
-Falls `npm` noch nicht installiert ist, meldet openSUSE zum Beispiel:
-
-```text
-The program 'npm' can be found in the following package:
-  * nodejs-common
-
-Try installing with:
-    sudo zypper install nodejs-common
-```
-
-In diesem Fall kann Node.js/npm so installiert werden:
-
-```sh
-sudo zypper install nodejs-common
-```
-
-Bei der Installation wurden in dieser Umgebung die Pakete `nodejs24`, `nodejs-common` und `npm24` installiert.
-
-Danach funktioniert:
-
-```sh
-cd frontend
-npm install
-npm run dev
-```
-
-Beim Start zeigt Vite zum Beispiel:
-
-```text
-VITE v6.3.5  ready in 400 ms
-
-Local:   http://localhost:5173/
-Network: use --host to expose
-```
-
-Vite zeigt danach die lokale URL im Terminal an. Üblicherweise ist das:
+Vite startet normalerweise unter:
 
 ```text
 http://localhost:5173
 ```
 
-Das Frontend ruft das Backend direkt unter `http://localhost:8080` auf. Das ist in `frontend/src/App.jsx` fest codiert:
+### Verhalten
 
-```js
-fetch("http://localhost:8080/")
-fetch("http://localhost:8080/tasks", ...)
-fetch("http://localhost:8080/delete", ...)
-```
+Die Hauptkomponente liegt in `frontend/src/App.jsx`.
 
-Darum muss das Backend laufen, damit das Frontend Tasks laden, speichern oder löschen kann.
+Das Frontend:
 
-## Wie Daten aktuell gespeichert werden
+- lädt Tasks beim Mounten mit `GET http://localhost:8080/`
+- erstellt Tasks mit `POST http://localhost:8080/tasks`
+- löscht Tasks mit `POST http://localhost:8080/delete`
 
-Die Tasks werden aktuell nicht dauerhaft gespeichert. Es gibt keine Datenbankanbindung und keinen Filewriter.
+Der Update-Endpoint existiert im Backend, wird im aktuellen Frontend aber noch nicht verwendet.
 
-Im Backend liegt die Task-Liste nur in einer Java-Liste:
+Nach Erstellen oder Loeschen setzt das Frontend `window.location.href = "/"`. Dadurch wird die Seite neu geladen und die Liste erneut vom Backend abgefragt.
 
-```java
-private List<Task> tasks = new ArrayList<>();
-```
+Wenn das Backend nicht läuft, schlagen die Fetch-Requests fehl. Das Frontend loggt den Fehler in der Browser-Konsole, zeigt aber aktuell keine eigene Fehlermeldung in der UI an.
 
-Diese Liste befindet sich im Arbeitsspeicher des laufenden Backend-Prozesses. Das bedeutet:
+## Mehrere Frontends
 
-- Neue Tasks werden nur im RAM gespeichert.
-- Es wird nichts in eine Datei geschrieben.
-- Es wird nichts in eine Datenbank geschrieben.
-- Nach einem Neustart des Backends ist die Liste wieder leer.
+Mehrere Browserfenster greifen auf dieselbe Backend-Liste und dieselbe JSON-Datei zu, solange sie dasselbe Backend verwenden.
 
-Im `pom.xml` ist zwar ein MySQL-Connector eingetragen, aber das reicht nicht für Persistenz. Es fehlt eine aktive Konfiguration wie `spring.datasource...`, ausserdem gibt es keine Entity, kein Repository und keine JDBC-Logik, die Daten in MySQL schreibt.
+Wichtig:
 
-## Warum Daten verloren gehen, wenn das Backend ausfällt
+- Ein Browserfenster aktualisiert sich nicht automatisch, wenn ein anderes Fenster einen Task erstellt oder löscht.
+- Es gibt kein Polling, keine WebSockets und keine automatische Synchronisierung.
+- Nach einem Reload lädt das Fenster den aktuellen Stand erneut vom Backend.
 
-Die gespeicherten Tasks leben nur solange wie der Backend-Prozess lebt.
+## Mehrere Backends
 
-Beispielablauf:
+Wenn mehrere Backend-Instanzen parallel laufen, hat jede Instanz ihre eigene Task-Liste im Speicher.
 
-1. Backend wird gestartet.
-2. Die Variable `tasks` wird als neue leere `ArrayList` erzeugt.
-3. User erstellt im Frontend mehrere Tasks.
-4. Das Backend fügt diese Tasks in die RAM-Liste ein.
-5. Backend wird beendet, crasht oder wird neu gestartet.
-6. Der Prozess ist weg, damit ist auch der RAM-Inhalt weg.
-7. Backend startet neu.
-8. `tasks` wird wieder als neue leere `ArrayList` erzeugt.
-9. Das Frontend lädt die Tasks neu und erhält eine leere Liste.
+Wenn mehrere Instanzen dieselbe `data/tasks.json` verwenden, koennen Schreibkonflikte entstehen, weil die Datei ohne Locking komplett neu geschrieben wird. Wenn jede Instanz in einem anderen Arbeitsverzeichnis läuft, verwendet sie vermutlich eine eigene JSON-Datei.
 
-Das ist normales Verhalten bei In-Memory-Speicherung. RAM ist flüchtig und nicht als dauerhafte Datenablage geeignet.
+Für Load Balancing oder produktive Nutzung waere eine echte Datenbank mit sauberer Transaktionslogik nötig.
 
-## Was passiert, wenn das Backend nicht läuft
+## Tests
 
-Wenn das Frontend geöffnet ist, aber das Backend nicht erreichbar ist:
-
-- `GET http://localhost:8080/` schlägt fehl.
-- Die Task-Liste kann nicht geladen werden.
-- Neue Tasks können nicht gespeichert werden.
-- Tasks können nicht gelöscht werden.
-- Im Browser erscheinen Fehler in der Developer Console, typischerweise `Failed to fetch` oder Verbindungsfehler.
-
-Das Frontend hat aktuell keine eigene Offline-Speicherung. Es kann den Ausfall also nicht abfangen und später synchronisieren.
-
-Wenn das Backend während der Nutzung wegbricht, bleibt die aktuell angezeigte Liste im Browser zunächst sichtbar, weil sie im React-State des geöffneten Frontends liegt. Diese Anzeige ist dann aber nur noch eine alte Kopie. Neue Requests an das Backend schlagen fehl. Nach einem Reload der Seite versucht das Frontend wieder `GET http://localhost:8080/`; wenn das Backend weiterhin down ist, kann keine Liste geladen werden. Wenn das Backend neu gestartet wurde, antwortet es wieder, aber mit einer leeren RAM-Liste.
-
-## Was passiert bei zwei geöffneten Frontends
-
-Wenn zwei Browserfenster oder zwei Benutzer dasselbe Backend verwenden, greifen beide auf dieselbe RAM-Liste im Backend zu.
-
-Beispiel:
-
-1. Frontend A wird geöffnet.
-2. Frontend B wird geöffnet.
-3. Beide laden die aktuelle Liste vom Backend.
-4. Frontend A erstellt einen neuen Task.
-5. Der Task wird im Backend in `tasks` gespeichert.
-6. Frontend B sieht den neuen Task nicht automatisch sofort, weil es seine Anzeige nur beim Laden der Seite aktualisiert.
-7. Wenn Frontend B die Seite neu lädt, wird die Liste erneut vom Backend geladen und der Task erscheint.
-
-Wichtig: Die Daten liegen nicht separat in jedem Frontend. Die zentrale Liste liegt im Backend-RAM.
-
-Auffällig ist deshalb: Zwei Browserfenster aktualisieren sich nicht gegenseitig live. Es gibt im Frontend kein Polling, keine WebSockets und keine automatische Neuabfrage nach Änderungen durch andere Fenster. Jedes Browserfenster hat seinen eigenen React-State und lädt die Daten aktuell nur beim Mounten der Komponente beziehungsweise nach dem Seiten-Reload.
-
-## Was passiert bei zwei geöffneten Backends
-
-Wenn das Backend zweimal gestartet würde, zum Beispiel auf zwei unterschiedlichen Ports oder in zwei Containern, hätte jede Backend-Instanz ihre eigene RAM-Liste.
-
-Beispiel:
+Backend-Tests liegen unter:
 
 ```text
-Backend 1: eigene ArrayList im RAM
-Backend 2: eigene ArrayList im RAM
+backend/src/test/java/com/example/demo/
 ```
 
-Dann hängt es davon ab, welches Backend das Frontend anspricht:
+Ausführen:
 
-- Frontend gegen Backend 1 sieht nur Tasks aus Backend 1.
-- Frontend gegen Backend 2 sieht nur Tasks aus Backend 2.
-- Die Listen synchronisieren sich nicht automatisch.
-
-Das wäre besonders problematisch bei Load Balancing. Wenn Requests abwechselnd auf unterschiedliche Backend-Instanzen verteilt werden, kann ein User scheinbar zufällig verschiedene Task-Listen sehen.
-
-## Was passiert bei zwei gleichen Tasks
-
-Das Backend prüft beim Hinzufügen, ob bereits ein Task mit derselben `taskdescription` existiert:
-
-```java
-for (Task t : tasks) {
-    if (t.getTaskdescription().equals(task.getTaskdescription())) {
-        return "redirect:/";
-    }
-}
+```sh
+cd backend
+mvn test
 ```
 
-Wenn die Beschreibung schon existiert, wird der neue Task ignoriert.
+Frontend-Tests liegen unter:
 
-## Aktuelle technische Bewertung
+```text
+frontend/test/
+```
 
-Die Anwendung ist aktuell eine Demo-Anwendung mit In-Memory-State.
+Ausführen:
 
-Für lokale Tests ist das ausreichend:
+```sh
+cd frontend
+npm test
+```
 
-- einfache API
-- keine Datenbankinstallation nötig
-- schneller Start
-- leicht verständlicher Code
+## Builds
 
-Für produktive Nutzung ist es nicht ausreichend:
+Frontend-Build:
 
-- Daten gehen bei Backend-Neustart verloren.
-- Keine dauerhafte Speicherung.
-- Keine Synchronisierung zwischen mehreren Backend-Instanzen.
-- Keine Benutzertrennung.
-- Keine Transaktionssicherheit.
-- Keine echte Fehlerbehandlung im Frontend.
+```sh
+cd frontend
+npm run build
+```
 
-## Wie man dauerhafte Speicherung ergänzen könnte
+Ergebnis:
 
-Sinnvolle Optionen:
+```text
+frontend/dist/
+```
 
-1. Datei speichern
-   - Einfach umzusetzen.
-   - Für kleine Demo-Projekte möglich.
-   - Nicht ideal für parallele Zugriffe oder produktive Nutzung.
+Backend-Build:
 
-2. H2-Datenbank
-   - Gut für Schul-/Demo-Projekte.
-   - Kann als Datei gespeichert werden.
-   - Einfach mit Spring Data JPA kombinierbar.
+```sh
+cd backend
+mvn -B clean package
+```
 
-3. MySQL oder PostgreSQL
-   - Sinnvoll für realistischere Umgebungen.
-   - Benötigt DB-Service, Konfiguration, Entity und Repository.
-   - Daten bleiben auch nach Backend-Neustart erhalten.
+Ergebnis:
 
-Für dieses Projekt wäre Spring Data JPA mit H2 oder MySQL der naheliegende nächste Schritt.
+```text
+backend/target/*.jar
+```
 
-## Kurzer Testplan
+## GitHub Actions
 
-Backend-Datenverlust testen:
+Der Workflow liegt in:
 
-1. Backend starten.
-2. Frontend starten.
-3. Im Frontend einen Task anlegen.
-4. Seite neu laden: Task ist noch sichtbar.
-5. Backend stoppen.
-6. Backend neu starten.
-7. Frontend neu laden: Task ist weg.
+```text
+.github/workflows/pr-build.yml
+```
 
-Zwei Frontends testen:
+Aktueller Stand:
 
-1. Backend starten.
-2. Frontend starten.
-3. Frontend in zwei Browserfenstern öffnen.
-4. In Fenster A einen Task anlegen.
-5. Fenster B beobachten: Der Task erscheint nicht automatisch.
-6. Fenster B neu laden: Der Task erscheint.
+- Ausführung bei Push auf `main`
+- manueller Start via `workflow_dispatch`
+- `ubuntu-24.04` als Runner
+- Frontend-Job mit Node.js 22
+- Backend-Job mit Java 21
+- offizielle Actions mit Node-24-Runtime-Majors:
+  - `actions/checkout@v6`
+  - `actions/setup-node@v6`
+  - `actions/setup-java@v5`
+  - `actions/upload-artifact@v6`
 
-Backend-Ausfall testen:
+Der Backend-Job verwendet bewusst:
 
-1. Frontend offen lassen.
-2. Backend stoppen.
-3. Im Frontend Task anlegen oder löschen.
-4. Browser-Konsole prüfen: Request schlägt fehl.
+```sh
+mvn -B clean package
+```
 
-## Fazit
+und nicht:
 
-Die Anwendung speichert Tasks aktuell ausschliesslich im RAM des Backends. Solange das Backend läuft, bleiben die Tasks verfügbar. Sobald das Backend beendet, neu gestartet oder durch einen Crash beendet wird, gehen alle Tasks verloren.
+```sh
+./mvnw clean package
+```
 
-Mehrere Frontends teilen sich dieselbe Backend-Liste, sehen Änderungen aber erst nach erneutem Laden oder nach einer expliziten Aktualisierung. Mehrere Backend-Instanzen würden dagegen getrennte Listen führen, weil jede Instanz ihren eigenen RAM hat.
+Grund: Der Maven Wrapper ist fuer den CI-Build nicht notwendig und kann beim Download der konfigurierten Maven-Version mit HTTP 403 scheitern. Auf dem GitHub-hosted Runner ist Maven bereits installiert.
+
+Nach erfolgreichen Builds werden diese Artefakte hochgeladen:
+
+```text
+frontend-dist
+backend-jar
+```
+
+Sie sind im jeweiligen GitHub Actions Lauf unten im Bereich `Artifacts` als ZIP-Dateien downloadbar.
+
+## Bekannte Grenzen
+
+- Keine Task-ID; `taskdescription` ist faktisch der eindeutige Schlüssel.
+- Keine Bearbeiten-Funktion im Frontend, obwohl das Backend `/update` anbietet.
+- Keine UI-Fehleranzeige, wenn das Backend nicht erreichbar ist.
+- Keine automatische Aktualisierung zwischen mehreren offenen Frontends.
+- Dateibasierte Speicherung ohne Locking.
+- MySQL-Abhängigkeit ist vorhanden, aber nicht aktiv genutzt.
+
+## Sinnvolle nächste Schritte
+
+1. Task-ID einfuehren, damit gleiche Beschreibungen moeglich werden.
+2. Bearbeiten-Funktion im Frontend an den `/update`-Endpoint anschliessen.
+3. Fehlerzustände im Frontend sichtbar anzeigen.
+4. Speicherpfad konfigurierbar machen, zum Beispiel per Spring Property.
+5. MySQL-Abhängigkeit entfernen oder echte Datenbankpersistenz mit Spring Data JPA implementieren.
