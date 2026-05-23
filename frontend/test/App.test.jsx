@@ -5,7 +5,7 @@ import App from '../src/App';
 
 describe('App', () => {
 	beforeEach(() => {
-		// fetch wird gemockt, damit die Tests kein laufendes Backend auf localhost:8080 brauchen.
+		// fetch wird gemockt, damit die Tests kein laufendes Backend brauchen.
 		global.fetch = jest.fn();
 	});
 
@@ -17,34 +17,34 @@ describe('App', () => {
 	test('sendet einen neuen Task beim Klick auf Absenden an das Backend', async () => {
 		const user = userEvent.setup();
 
-		// Arrange: Beim Start laedt die App zuerst die bestehende Task-Liste vom Backend.
-		// Fuer diesen Test reicht eine leere Liste als Antwort.
+		// Arrange: Beim Start lädt die App zuerst die bestehende Task-Liste vom Backend.
+		// Für diesen Test reicht eine leere Liste als Antwort.
 		global.fetch.mockResolvedValueOnce({
 			json: async () => [],
 		});
 
-		// Arrange: Der zweite fetch ist spaeter der POST-Request zum Erstellen.
-		// Das Promise bleibt absichtlich offen, damit die Weiterleitung window.location.href = "/" nicht ausgeloest wird.
+		// Arrange: Der zweite fetch ist später der POST-Request zum Erstellen.
+		// Das Promise bleibt absichtlich offen, damit die Weiterleitung window.location.href = "/" nicht ausgelöst wird.
 		global.fetch.mockReturnValueOnce(new Promise(() => {}));
 
 		render(<App />);
 
 		// Assert: Die App muss beim Rendern die bestehende Task-Liste laden.
 		await waitFor(() => {
-			expect(global.fetch).toHaveBeenCalledWith('http://localhost:8080/');
+			expect(global.fetch).toHaveBeenCalledWith('/api/');
 		});
 
 		// Act: Der Anwender schreibt einen Tasktext und klickt auf den Absenden-Button.
 		await user.type(screen.getByRole('textbox'), 'Frontend Task');
 		await user.click(screen.getByRole('button', { name: /absenden/i }));
 
-		// Assert: Nach dem Klick muss ein zweiter fetch-Aufruf fuer den POST-Request vorhanden sein.
+		// Assert: Nach dem Klick muss ein zweiter fetch-Aufruf für den POST-Request vorhanden sein.
 		await waitFor(() => {
 			expect(global.fetch).toHaveBeenCalledTimes(2);
 		});
 
 		// Assert: Der Absenden-Button schickt den Task an den Backend-Endpunkt POST /tasks.
-		expect(global.fetch).toHaveBeenNthCalledWith(2, 'http://localhost:8080/tasks', {
+		expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/tasks', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -62,8 +62,8 @@ describe('App', () => {
 			json: async () => [{ taskdescription: 'Existing Task' }],
 		});
 
-		// Arrange: Der zweite fetch ist spaeter der Request zum Loeschen.
-		// Das Promise bleibt absichtlich offen, damit die Weiterleitung window.location.href = "/" nicht ausgeloest wird.
+		// Arrange: Der zweite fetch ist später der Request zum Löschen.
+		// Das Promise bleibt absichtlich offen, damit die Weiterleitung window.location.href = "/" nicht ausgelöst wird.
 		global.fetch.mockReturnValueOnce(new Promise(() => {}));
 
 		render(<App />);
@@ -78,13 +78,13 @@ describe('App', () => {
 		const deleteButton = screen.getByRole('button', { name: '✔' });
 		await user.click(deleteButton);
 
-		// Assert: Nach dem Klick muss ein zweiter fetch-Aufruf fuer den Delete-Request vorhanden sein.
+		// Assert: Nach dem Klick muss ein zweiter fetch-Aufruf für den Delete-Request vorhanden sein.
 		await waitFor(() => {
 			expect(global.fetch).toHaveBeenCalledTimes(2);
 		});
 
 		// Assert: Der Delete-Button schickt den Task an den Backend-Endpunkt POST /delete.
-		expect(global.fetch).toHaveBeenNthCalledWith(2, 'http://localhost:8080/delete', {
+		expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/delete', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

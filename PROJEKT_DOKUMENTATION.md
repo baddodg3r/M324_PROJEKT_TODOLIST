@@ -9,7 +9,7 @@ Die Anwendung besteht aus zwei Teilen:
 - `frontend/`: React 19 mit Vite 6
 - `backend/`: Spring Boot 3.4.5 mit Java 21
 
-Das Frontend zeigt eine ToDo-Liste an und sendet HTTP-Requests direkt an das Backend unter `http://localhost:8080`. Das Backend verwaltet Tasks in einer Liste und speichert diese Liste als JSON-Datei.
+Das Frontend zeigt eine ToDo-Liste an und sendet HTTP-Requests über relative `/api`-Pfade. Lokal leitet Vite diese Requests an das Backend unter `http://localhost:8080` weiter. Im Deployment kann Apache dieselben `/api`-Pfade per Reverse Proxy an das Backend weiterleiten. Das Backend verwaltet Tasks in einer Liste und speichert diese Liste als JSON-Datei.
 
 ## Voraussetzungen
 
@@ -173,21 +173,76 @@ Vite startet normalerweise unter:
 http://localhost:5173
 ```
 
+Im lokalen Entwicklungsmodus ist in `frontend/vite.config.js` ein Proxy konfiguriert. Requests an `/api` werden dadurch an `http://localhost:8080` weitergeleitet und das Präfix `/api` wird entfernt.
+
 ### Verhalten
 
 Die Hauptkomponente liegt in `frontend/src/App.jsx`.
 
 Das Frontend:
 
-- lädt Tasks beim Mounten mit `GET http://localhost:8080/`
-- erstellt Tasks mit `POST http://localhost:8080/tasks`
-- löscht Tasks mit `POST http://localhost:8080/delete`
+- lädt Tasks beim Mounten mit `GET /api/`
+- erstellt Tasks mit `POST /api/tasks`
+- löscht Tasks mit `POST /api/delete`
 
 Der Update-Endpoint existiert im Backend, wird im aktuellen Frontend aber noch nicht verwendet.
 
 Nach Erstellen oder Löschen setzt das Frontend `window.location.href = "/"`. Dadurch wird die Seite neu geladen und die Liste erneut vom Backend abgefragt.
 
 Wenn das Backend nicht läuft, schlagen die Fetch-Requests fehl. Das Frontend loggt den Fehler in der Browser-Konsole, zeigt aber aktuell keine eigene Fehlermeldung in der UI an.
+
+## Deployment mit Apache-Reverse-Proxy
+
+Für das Deployment wird das gebaute React/Vite-Frontend statisch über Apache ausgeliefert. Das Backend läuft als Spring-Boot-Anwendung auf Port `8080`.
+
+Das Frontend verwendet bewusst keine fest codierten URLs wie:
+
+```text
+http://localhost:8080
+```
+
+Der Grund: JavaScript läuft im Browser des Clients. Wenn ein Benutzer die Anwendung zum Beispiel über `http://192.168.1.42` öffnet, würde `http://localhost:8080` auf den Client-Rechner zeigen und nicht auf den Deployment-Server.
+
+Stattdessen verwendet das Frontend relative API-Pfade:
+
+```text
+/api/
+/api/tasks
+/api/delete
+```
+
+Apache leitet diese Requests intern an das Backend weiter:
+
+```apache
+ProxyPass /api/ http://localhost:8080/
+ProxyPassReverse /api/ http://localhost:8080/
+```
+
+Damit wird `localhost:8080` serverintern auf dem Deployment-Server ausgewertet. Der Browser spricht nur Apache an.
+
+Die dafür benötigten Apache-Module sind:
+
+```sh
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+```
+
+Nach Änderungen an der Apache-Konfiguration:
+
+```sh
+sudo apache2ctl configtest
+sudo systemctl reload apache2
+```
+
+Ein einfacher Funktionstest auf dem Server:
+
+```sh
+curl -i http://localhost/api/
+curl -i -X POST http://localhost/api/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"taskdescription":"Test über Apache API"}'
+curl -i http://localhost/api/
+```
 
 ## Mehrere Frontends
 

@@ -2,7 +2,7 @@
 
 ToDo-Anwendung mit React/Vite-Frontend und Spring-Boot-Backend.
 
-Das Frontend läuft lokal auf Port `5173` und spricht das Backend unter `http://localhost:8080` an. Das Backend stellt eine einfache REST-API bereit und speichert Tasks als JSON-Datei.
+Das Frontend läuft lokal auf Port `5173` und spricht das Backend über relative `/api`-Pfade an. Lokal leitet der Vite-Dev-Proxy diese Requests an `http://localhost:8080` weiter. Im Deployment übernimmt Apache diese Weiterleitung. Das Backend stellt eine einfache REST-API bereit und speichert Tasks als JSON-Datei.
 
 ## Projektstruktur
 
@@ -56,6 +56,8 @@ Das Frontend ist danach normalerweise erreichbar unter:
 ```text
 http://localhost:5173
 ```
+
+Im lokalen Entwicklungsmodus leitet Vite alle Requests unter `/api` an das Backend unter `http://localhost:8080` weiter.
 
 ## Tests und Builds
 
@@ -120,6 +122,25 @@ Wenn das Backend mit `cd backend && mvn spring-boot:run` gestartet wird, verwend
 ```text
 backend/data/tasks.json
 ```
+
+## Deployment mit Apache
+
+Im Deployment wird das gebaute Frontend statisch über Apache ausgeliefert. Das Frontend verwendet keine fest codierten `localhost:8080`-URLs mehr, sondern relative API-Pfade:
+
+```text
+/api/
+/api/tasks
+/api/delete
+```
+
+Apache muss diese Requests intern an das Spring-Boot-Backend weiterleiten:
+
+```apache
+ProxyPass /api/ http://localhost:8080/
+ProxyPassReverse /api/ http://localhost:8080/
+```
+
+Dafür müssen die Apache-Module `proxy` und `proxy_http` aktiv sein. Der Vorteil dieser Architektur ist, dass `localhost` nur noch serverintern auf dem Deployment-Server ausgewertet wird und nicht im Browser des Clients.
 
 ## GitHub Actions Pipeline
 
