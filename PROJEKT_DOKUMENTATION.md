@@ -148,7 +148,7 @@ backend/data/tasks.json
 
 Wenn das Backend aus einem anderen Arbeitsverzeichnis gestartet wird, kann entsprechend eine andere `data/tasks.json` verwendet werden. Im Repository existiert auch `data/tasks.json` im Projektroot; diese Datei gehört zu Starts aus dem Root-Verzeichnis und ist nicht dieselbe Datei wie `backend/data/tasks.json`.
 
-Die Speicherung ist dateibasiert, nicht datenbankbasiert. Der MySQL-Connector ist zwar in `pom.xml` eingetragen, aber es gibt aktuell keine aktive Datasource-Konfiguration, keine Entity, kein Repository und keine JDBC-/JPA-Logik.
+Die Speicherung ist dateibasiert, nicht datenbankbasiert. In `pom.xml` ist keine Datenbank-Dependency eingetragen. Es gibt aktuell keine aktive Datasource-Konfiguration, keine Entity, kein Repository und keine JDBC-/JPA-Logik.
 
 Konsequenzen:
 
@@ -485,7 +485,7 @@ Die Artefakte können direkt im jeweiligen GitHub Actions Lauf im Bereich `Artif
 - Keine UI-Fehleranzeige, wenn das Backend nicht erreichbar ist.
 - Keine automatische Aktualisierung zwischen mehreren offenen Frontends.
 - Dateibasierte Speicherung ohne Locking.
-- MySQL-Abhängigkeit ist vorhanden, aber nicht aktiv genutzt.
+- Keine Datenbankpersistenz; die Anwendung verwendet aktuell JSON-Datei-Speicherung.
 
 ## Sinnvolle nächste Schritte
 
@@ -493,4 +493,4 @@ Die Artefakte können direkt im jeweiligen GitHub Actions Lauf im Bereich `Artif
 2. Bearbeiten-Funktion im Frontend an den `/update`-Endpoint anschließen.
 3. Fehlerzustände im Frontend sichtbar anzeigen.
 4. Speicherpfad konfigurierbar machen, zum Beispiel per Spring Property.
-5. MySQL-Abhängigkeit entfernen oder echte Datenbankpersistenz mit Spring Data JPA implementieren.
+5. Echte Datenbankpersistenz mit Spring Data JPA implementieren, falls die Anwendung später eine Datenbank verwenden soll.
