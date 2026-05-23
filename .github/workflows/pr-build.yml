@@ -34,11 +34,11 @@ jobs:
     steps:
       # Holt den aktuellen Repository-Stand in den GitHub Actions Runner.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Richtet Node.js für den Frontend-Build ein.
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           # Node-Version für das Frontend.
           node-version: 22
@@ -61,7 +61,7 @@ jobs:
       # Lädt den erzeugten Frontend-Build als GitHub Actions Artefakt hoch.
       # Dadurch kann der dist-Ordner nach dem Workflow heruntergeladen werden.
       - name: Upload frontend build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-dist
           path: frontend/dist
@@ -81,11 +81,11 @@ jobs:
     steps:
       # Holt den aktuellen Repository-Stand in den GitHub Actions Runner.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Richtet Java für den Maven-Build ein.
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           # Temurin ist eine verbreitete OpenJDK-Distribution.
           distribution: temurin
@@ -104,7 +104,7 @@ jobs:
       # Lädt die erzeugte JAR-Datei als GitHub Actions Artefakt hoch.
       # Dadurch kann das Backend-Build-Ergebnis nach dem Workflow heruntergeladen werden.
       - name: Upload backend build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-jar
           path: backend/target/*.jar
