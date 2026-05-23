@@ -76,19 +76,19 @@ jobs:
         uses: actions/checkout@v4
 
       # Richtet Java für den Maven-Build ein.
-      - name: Set up Java 17
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           # Temurin ist eine verbreitete OpenJDK-Distribution.
           distribution: temurin
 
-          # Das Backend läuft mit Java 17, daher wird auch in der Pipeline Java 17 verwendet.
-          java-version: 17
+          # Das Backend ist in der pom.xml auf Java 21 konfiguriert.
+          java-version: 21
 
           # Aktiviert Maven-Caching für schnellere Builds.
           cache: maven
 
-      # Baut das Backend mit dem Maven Wrapper aus dem Projekt.
-      # Dadurch wird nicht vorausgesetzt, dass Maven direkt auf dem Runner installiert ist.
-      - name: Build backend with Maven wrapper
-        run: ./mvnw clean package
+      # Baut das Backend mit dem Maven aus dem GitHub-hosted Runner.
+      # Der Maven Wrapper ist hier nicht nötig und kann sonst an seinem Maven-Download scheitern.
+      - name: Build backend with Maven
+        run: mvn -B clean package
