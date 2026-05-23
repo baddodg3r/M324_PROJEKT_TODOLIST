@@ -121,16 +121,91 @@ Wenn das Backend mit `cd backend && mvn spring-boot:run` gestartet wird, verwend
 backend/data/tasks.json
 ```
 
-## GitHub Actions
+## GitHub Actions Pipeline
 
-Der Workflow [pr-build.yml](.github/workflows/pr-build.yml) baut Frontend und Backend getrennt:
+Für das Projekt wurde eine CI-Pipeline mit GitHub Actions erstellt. Die Pipeline baut automatisch das React/Vite-Frontend sowie das Spring-Boot-Backend. Dadurch kann geprüft werden, ob die Software weiterhin erfolgreich gebaut werden kann.
 
-- Frontend: Node.js 22, `npm ci`, `npm run build`
-- Backend: Java 21, `mvn -B clean package`
+Die Workflow-Datei befindet sich unter:
 
-Nach erfolgreichem Lauf werden Build-Artefakte hochgeladen:
+```text
+.github/workflows/pr-build.yml
+```
 
-- `frontend-dist`
-- `backend-jar` mit der erzeugten Spring-Boot-JAR aus `backend/target/*.jar`
+Die Pipeline wird automatisch bei Pushes auf den `main`-Branch gestartet. Zusätzlich kann sie manuell über `workflow_dispatch` ausgeführt werden.
 
-Diese liegen im GitHub Actions Lauf unter `Artifacts` als ZIP-Download bereit.
+Der Checkout-Step benötigt Leserechte auf den Repository-Inhalt. Deshalb ist im Workflow explizit gesetzt:
+
+```yaml
+permissions:
+  contents: read
+```
+
+### Aufbau der Pipeline
+
+| Job | Aufgabe |
+| --- | --- |
+| `frontend-build` | Baut das React/Vite-Frontend |
+| `backend-build` | Baut das Spring-Boot-Backend |
+
+Die Trennung verbessert die Übersichtlichkeit und erleichtert die Fehlersuche.
+
+### Frontend-Build
+
+Für das Frontend wird Node.js 22 verwendet. Der Workflow führt im Verzeichnis `frontend/` folgende Befehle aus:
+
+```sh
+npm ci
+npm run build
+```
+
+`npm ci` eignet sich besser für CI/CD-Pipelines als `npm install`, weil exakt die Versionen aus `package-lock.json` verwendet werden, reproduzierbare Builds entstehen und die Installation schneller sowie stabiler abläuft.
+
+Nach erfolgreichem Build wird der erzeugte `dist`-Ordner als GitHub Actions Artefakt `frontend-dist` hochgeladen.
+
+### Backend-Build
+
+Das Backend verwendet Java 21 und Maven. Der Workflow führt im Verzeichnis `backend/` folgenden Befehl aus:
+
+```sh
+mvn -B clean package
+```
+
+Dabei wird eine ausführbare Spring-Boot-JAR-Datei erzeugt und als Artefakt `backend-jar` hochgeladen.
+
+Im Projekt ist zwar noch der Maven Wrapper vorhanden, im Workflow wird jedoch das bereits installierte Maven des GitHub-Runners verwendet. Der Grund dafür ist, dass der Maven Wrapper beim automatischen Download von Maven `3.8.6` mit HTTP-403-Fehlern fehlschlagen kann. Durch die direkte Nutzung von Maven im Runner ist der Build stabiler.
+
+### Feste Versionen
+
+Im Workflow wurden feste Versionen definiert:
+
+```yaml
+runs-on: ubuntu-24.04
+node-version: 22
+java-version: 21
+```
+
+Dies wurde bewusst gewählt, damit die Build-Umgebung stabil bleibt, keine unerwarteten Änderungen durch neue `latest`-Versionen entstehen und reproduzierbare Builds möglich sind.
+
+`ubuntu-latest` kann sich mit der Zeit automatisch ändern. Dadurch könnten Builds plötzlich fehlschlagen, obwohl am Projekt selbst nichts geändert wurde. Mit `ubuntu-24.04` bleibt die Umgebung stabil und nachvollziehbar.
+
+### Caching
+
+Für npm und Maven wurde Caching aktiviert:
+
+- Frontend: `cache: npm`
+- Backend: `cache: maven`
+
+Dadurch müssen Abhängigkeiten nicht bei jedem Build neu heruntergeladen werden und spätere Pipeline-Läufe werden schneller.
+
+### Artefakte
+
+Nach erfolgreichem Build werden Artefakte hochgeladen.
+
+| Artefakt | Inhalt |
+| --- | --- |
+| `frontend-dist` | gebautes Frontend aus `frontend/dist` |
+| `backend-jar` | ausführbare Spring-Boot-JAR aus `backend/target/*.jar` |
+
+Die Artefakte können direkt im jeweiligen GitHub Actions Lauf im Bereich `Artifacts` als ZIP-Dateien heruntergeladen werden.
+
+Screenshots des erfolgreichen Pipeline-Laufs und der Artefakte werden nicht im Repository gespeichert, sondern im Teams-Ordner abgelegt.

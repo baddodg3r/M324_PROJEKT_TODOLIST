@@ -281,28 +281,81 @@ SpringApplication.run(DemoApplication.class, args);
 
 Eine WAR-Datei wäre dann sinnvoll, wenn das Backend nicht selbstständig laufen soll, sondern in einen externen Servlet-Container wie Tomcat auf einer VM deployed wird. Dafür müsste das Projekt gezielt auf WAR-Packaging umgestellt werden, typischerweise mit `<packaging>war</packaging>` und einer passenden Servlet-Initialisierung.
 
-## GitHub Actions
+## GitHub Actions Pipeline
 
-Der Workflow liegt in:
+### Ziel der Pipeline
+
+Für das Projekt wurde eine CI-Pipeline mit GitHub Actions erstellt.
+
+Die Pipeline baut automatisch das React/Vite-Frontend sowie das Spring-Boot-Backend. Dadurch kann geprüft werden, ob die Software weiterhin erfolgreich gebaut werden kann.
+
+Die Workflow-Datei befindet sich unter:
 
 ```text
 .github/workflows/pr-build.yml
 ```
 
-Aktueller Stand:
+Die Pipeline wird automatisch bei Pushes auf den `main`-Branch gestartet. Zusätzlich kann sie manuell über `workflow_dispatch` ausgeführt werden.
 
-- Ausführung bei Push auf `main`
-- manueller Start via `workflow_dispatch`
-- `ubuntu-24.04` als Runner
-- Frontend-Job mit Node.js 22
-- Backend-Job mit Java 21
-- offizielle Actions mit Node-24-Runtime-Majors:
-  - `actions/checkout@v6`
-  - `actions/setup-node@v6`
-  - `actions/setup-java@v5`
-  - `actions/upload-artifact@v6`
+Der Checkout-Step benötigt Leserechte auf den Repository-Inhalt. Deshalb ist im Workflow explizit gesetzt:
 
-Der Backend-Job verwendet bewusst:
+```yaml
+permissions:
+  contents: read
+```
+
+### Aufbau der Pipeline
+
+Die Pipeline besteht aus zwei getrennten Jobs:
+
+| Job | Aufgabe |
+| --- | --- |
+| `frontend-build` | Baut das React/Vite-Frontend |
+| `backend-build` | Baut das Spring-Boot-Backend |
+
+Die Trennung verbessert die Übersichtlichkeit und erleichtert die Fehlersuche.
+
+### Frontend-Build
+
+Für das Frontend wird Node.js 22 verwendet.
+
+Der Workflow führt im Verzeichnis `frontend/` folgende Befehle aus:
+
+```sh
+npm ci
+npm run build
+```
+
+`npm ci` eignet sich besser für CI/CD-Pipelines als `npm install`, weil:
+
+- exakt die Versionen aus `package-lock.json` verwendet werden
+- reproduzierbare Builds entstehen
+- die Installation schneller und stabiler abläuft
+
+Nach erfolgreichem Build wird der erzeugte `dist`-Ordner als GitHub Actions Artefakt hochgeladen.
+
+### Backend-Build
+
+Das Backend verwendet:
+
+- Java 21
+- Maven
+
+Der Workflow führt im Verzeichnis `backend/` folgenden Befehl aus:
+
+```sh
+mvn -B clean package
+```
+
+Dabei wird eine ausführbare Spring-Boot-JAR-Datei erzeugt.
+
+### Warum wurde Maven direkt verwendet?
+
+Im Projekt ist zwar noch der Maven Wrapper vorhanden, im Workflow wird jedoch das bereits installierte Maven des GitHub-Runners verwendet.
+
+Der Grund dafür ist, dass der Maven Wrapper beim automatischen Download von Maven `3.8.6` mit HTTP-403-Fehlern fehlschlagen kann. Durch die direkte Nutzung von Maven im Runner ist der Build stabiler.
+
+Der Backend-Job verwendet deshalb bewusst:
 
 ```sh
 mvn -B clean package
@@ -314,16 +367,61 @@ und nicht:
 ./mvnw clean package
 ```
 
-Grund: Der Maven Wrapper ist für den CI-Build nicht notwendig und kann beim Download der konfigurierten Maven-Version mit HTTP 403 scheitern. Auf dem GitHub-hosted Runner ist Maven bereits installiert.
+### Warum wurden feste Versionen verwendet?
 
-Nach erfolgreichen Builds werden diese Artefakte hochgeladen:
+Im Workflow wurden feste Versionen definiert:
 
-```text
-frontend-dist
-backend-jar
+```yaml
+runs-on: ubuntu-24.04
+node-version: 22
+java-version: 21
 ```
 
-Sie sind im jeweiligen GitHub Actions Lauf unten im Bereich `Artifacts` als ZIP-Dateien downloadbar.
+Dies wurde bewusst gewählt, damit:
+
+- die Build-Umgebung stabil bleibt
+- keine unerwarteten Änderungen durch neue `latest`-Versionen entstehen
+- reproduzierbare Builds möglich sind
+
+### Warum wurde ubuntu-24.04 statt ubuntu-latest verwendet?
+
+`ubuntu-latest` kann sich mit der Zeit automatisch ändern.
+
+Dadurch könnten Builds plötzlich fehlschlagen, obwohl am Projekt selbst nichts geändert wurde. Mit `ubuntu-24.04` bleibt die Umgebung stabil und nachvollziehbar.
+
+### Caching
+
+Für npm und Maven wurde Caching aktiviert.
+
+Dadurch:
+
+- müssen Abhängigkeiten nicht bei jedem Build neu heruntergeladen werden
+- werden spätere Pipeline-Läufe schneller
+
+Im Workflow ist dafür gesetzt:
+
+- Frontend: `cache: npm`
+- Backend: `cache: maven`
+
+### Verwendete Actions
+
+Der Workflow verwendet offizielle Actions mit Node-24-Runtime-Majors:
+
+- `actions/checkout@v6`
+- `actions/setup-node@v6`
+- `actions/setup-java@v5`
+- `actions/upload-artifact@v6`
+
+### Artefakte
+
+Nach erfolgreichem Build werden Artefakte hochgeladen.
+
+| Artefakt | Inhalt |
+| --- | --- |
+| `frontend-dist` | gebautes Frontend aus `frontend/dist` |
+| `backend-jar` | ausführbare Spring-Boot-JAR aus `backend/target/*.jar` |
+
+Die Artefakte können direkt im jeweiligen GitHub Actions Lauf im Bereich `Artifacts` als ZIP-Dateien heruntergeladen werden.
 
 ## Bekannte Grenzen
 
