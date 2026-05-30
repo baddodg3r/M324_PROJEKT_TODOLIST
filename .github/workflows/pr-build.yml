@@ -101,9 +101,9 @@ jobs:
           cache: maven
 
       # Baut das Backend mit dem Maven aus dem GitHub-hosted Runner.
-      # Der Maven Wrapper ist hier nicht nötig und kann sonst an seinem Maven-Download scheitern.
+      # Tests laufen nachgelagert im separaten Unit-Tests-Workflow.
       - name: Build backend with Maven
-        run: mvn -B clean package
+        run: mvn -B -DskipTests clean package
 
       # Lädt die erzeugte JAR-Datei als GitHub Actions Artefakt hoch.
       # Dadurch kann das Backend-Build-Ergebnis nach dem Workflow heruntergeladen werden.
