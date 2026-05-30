@@ -4,13 +4,22 @@ import userEvent from '@testing-library/user-event';
 import App from '../src/App';
 
 describe('App', () => {
+	let originalLocation;
+
 	beforeEach(() => {
 		// fetch wird gemockt, damit die Tests kein laufendes Backend brauchen.
 		global.fetch = jest.fn();
+
+		// window.location.href wird nach POST/DELETE gesetzt. Fuer den Test ersetzen wir location,
+		// damit kein echter jsdom-Navigationsversuch ausgeloest wird.
+		originalLocation = window.location;
+		delete window.location;
+		window.location = { ...originalLocation, href: '' };
 	});
 
 	afterEach(() => {
-		// Nach jedem Test werden alle Mock-Aufrufe entfernt, damit Tests sich nicht gegenseitig beeinflussen.
+		// Nach jedem Test werden Mocks und location zurueckgesetzt, damit Tests sich nicht beeinflussen.
+		window.location = originalLocation;
 		jest.resetAllMocks();
 	});
 
@@ -24,8 +33,7 @@ describe('App', () => {
 		});
 
 		// Arrange: Der zweite fetch ist später der POST-Request zum Erstellen.
-		// Das Promise bleibt absichtlich offen, damit die Weiterleitung window.location.href = "/" nicht ausgelöst wird.
-		global.fetch.mockReturnValueOnce(new Promise(() => {}));
+		global.fetch.mockResolvedValueOnce({});
 
 		render(<App />);
 
@@ -51,6 +59,7 @@ describe('App', () => {
 			},
 			body: JSON.stringify({ taskdescription: 'Frontend Task' }),
 		});
+		expect(window.location.href).toBe('/');
 	});
 
 	test('löscht einen Task beim Klick auf den Delete-Button', async () => {
@@ -63,8 +72,7 @@ describe('App', () => {
 		});
 
 		// Arrange: Der zweite fetch ist später der Request zum Löschen.
-		// Das Promise bleibt absichtlich offen, damit die Weiterleitung window.location.href = "/" nicht ausgelöst wird.
-		global.fetch.mockReturnValueOnce(new Promise(() => {}));
+		global.fetch.mockResolvedValueOnce({});
 
 		render(<App />);
 
@@ -91,5 +99,6 @@ describe('App', () => {
 			},
 			body: JSON.stringify({ taskdescription: 'Existing Task' }),
 		});
+		expect(window.location.href).toBe('/');
 	});
 });
