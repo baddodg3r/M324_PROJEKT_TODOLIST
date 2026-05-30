@@ -31,7 +31,7 @@ describe('App', () => {
 
 		// Assert: Die App muss beim Rendern die bestehende Task-Liste laden.
 		await waitFor(() => {
-			expect(global.fetch).toHaveBeenCalledWith('/api/');
+			expect(global.fetch).toHaveBeenCalledWith('/api/v1/');
 		});
 
 		// Act: Der Anwender schreibt einen Tasktext und klickt auf den Absenden-Button.
@@ -43,8 +43,8 @@ describe('App', () => {
 			expect(global.fetch).toHaveBeenCalledTimes(2);
 		});
 
-		// Assert: Der Absenden-Button schickt den Task an den Backend-Endpunkt POST /tasks.
-		expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/tasks', {
+		// Assert: Der Absenden-Button schickt den Task an den Backend-Endpunkt POST /api/v1/tasks.
+		expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/v1/tasks', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -83,8 +83,8 @@ describe('App', () => {
 			expect(global.fetch).toHaveBeenCalledTimes(2);
 		});
 
-		// Assert: Der Delete-Button schickt den Task an den Backend-Endpunkt POST /delete.
-		expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/delete', {
+		// Assert: Der Delete-Button schickt den Task an den Backend-Endpunkt POST /api/v1/delete.
+		expect(global.fetch).toHaveBeenNthCalledWith(2, '/api/v1/delete', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

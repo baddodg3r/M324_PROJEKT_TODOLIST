@@ -9,7 +9,7 @@ Die Anwendung besteht aus zwei Teilen:
 - `frontend/`: React 19 mit Vite 6
 - `backend/`: Spring Boot 3.4.5 mit Java 21
 
-Das Frontend zeigt eine ToDo-Liste an und sendet HTTP-Requests über relative `/api`-Pfade. Lokal leitet Vite diese Requests an das Backend unter `http://localhost:8080` weiter. Im Deployment kann Apache dieselben `/api`-Pfade per Reverse Proxy an das Backend weiterleiten. Das Backend verwaltet Tasks in einer Liste und speichert diese Liste als JSON-Datei.
+Das Frontend zeigt eine ToDo-Liste an und sendet HTTP-Requests über versionierte relative `/api/v1`-Pfade. Lokal leitet Vite diese Requests an das Backend unter `http://localhost:8080` weiter. Im Deployment kann Apache dieselben `/api/v1`-Pfade per Reverse Proxy an das Backend weiterleiten. Das Backend verwaltet Tasks in einer Liste und speichert diese Liste als JSON-Datei.
 
 ## Voraussetzungen
 
@@ -75,15 +75,24 @@ http://localhost:8080
 Der Controller `TaskController` stellt diese Endpoints bereit:
 
 ```text
+GET  /api/v1/
+POST /api/v1/tasks
+POST /api/v1/update
+POST /api/v1/delete
+```
+
+Aus Kompatibilitätsgründen bleiben die bisherigen unversionierten Endpunkte zusätzlich erreichbar:
+
+```text
 GET  /
 POST /tasks
 POST /update
 POST /delete
 ```
 
-`GET /` gibt alle Tasks als Liste von DTOs zurück.
+`GET /api/v1/` gibt alle Tasks als Liste von DTOs zurück.
 
-`POST /tasks` erstellt einen Task. Erwarteter Body:
+`POST /api/v1/tasks` erstellt einen Task. Erwarteter Body:
 
 ```json
 {
@@ -91,7 +100,7 @@ POST /delete
 }
 ```
 
-`POST /update` bearbeitet einen bestehenden Task. Erwarteter Body:
+`POST /api/v1/update` bearbeitet einen bestehenden Task. Erwarteter Body:
 
 ```json
 {
@@ -100,7 +109,7 @@ POST /delete
 }
 ```
 
-`POST /delete` löscht einen Task. Erwarteter Body:
+`POST /api/v1/delete` löscht einen Task. Erwarteter Body:
 
 ```json
 {
@@ -173,7 +182,7 @@ Vite startet normalerweise unter:
 http://localhost:5173
 ```
 
-Im lokalen Entwicklungsmodus ist in `frontend/vite.config.js` ein Proxy konfiguriert. Requests an `/api` werden dadurch an `http://localhost:8080` weitergeleitet und das Präfix `/api` wird entfernt.
+Im lokalen Entwicklungsmodus ist in `frontend/vite.config.js` ein Proxy konfiguriert. Requests an `/api` werden dadurch unverändert an `http://localhost:8080` weitergeleitet. Dadurch erreicht `/api/v1/tasks` im Browser denselben Pfad im Backend.
 
 ### Verhalten
 
@@ -181,9 +190,9 @@ Die Hauptkomponente liegt in `frontend/src/App.jsx`.
 
 Das Frontend:
 
-- lädt Tasks beim Mounten mit `GET /api/`
-- erstellt Tasks mit `POST /api/tasks`
-- löscht Tasks mit `POST /api/delete`
+- lädt Tasks beim Mounten mit `GET /api/v1/`
+- erstellt Tasks mit `POST /api/v1/tasks`
+- löscht Tasks mit `POST /api/v1/delete`
 
 Der Update-Endpoint existiert im Backend, wird im aktuellen Frontend aber noch nicht verwendet.
 
@@ -206,16 +215,16 @@ Der Grund: JavaScript läuft im Browser des Clients. Wenn ein Benutzer die Anwen
 Stattdessen verwendet das Frontend relative API-Pfade:
 
 ```text
-/api/
-/api/tasks
-/api/delete
+/api/v1/
+/api/v1/tasks
+/api/v1/delete
 ```
 
 Apache leitet diese Requests intern an das Backend weiter:
 
 ```apache
-ProxyPass /api/ http://localhost:8080/
-ProxyPassReverse /api/ http://localhost:8080/
+ProxyPass /api/ http://localhost:8080/api/
+ProxyPassReverse /api/ http://localhost:8080/api/
 ```
 
 Damit wird `localhost:8080` serverintern auf dem Deployment-Server ausgewertet. Der Browser spricht nur Apache an.
@@ -237,11 +246,11 @@ sudo systemctl reload apache2
 Ein einfacher Funktionstest auf dem Server:
 
 ```sh
-curl -i http://localhost/api/
-curl -i -X POST http://localhost/api/tasks \
+curl -i http://localhost/api/v1/
+curl -i -X POST http://localhost/api/v1/tasks \
   -H "Content-Type: application/json" \
   -d '{"taskdescription":"Test über Apache API"}'
-curl -i http://localhost/api/
+curl -i http://localhost/api/v1/
 ```
 
 ## Mehrere Frontends
@@ -478,10 +487,127 @@ Nach erfolgreichem Build werden Artefakte hochgeladen.
 
 Die Artefakte können direkt im jeweiligen GitHub Actions Lauf im Bereich `Artifacts` als ZIP-Dateien heruntergeladen werden.
 
+## SQ7A API-Versionierung
+
+### Ausgangslage
+
+REST-Schnittstellen entwickeln sich im Laufe eines Projekts weiter. Neue Funktionen kommen hinzu, bestehende Endpunkte werden erweitert und Datenstrukturen können sich ändern. Ohne Versionierung können solche Änderungen bestehende Clients beschädigen, weil diese weiterhin die alte Struktur erwarten.
+
+API-Versionierung erlaubt es, mehrere Varianten einer Schnittstelle parallel anzubieten. Bestehende Clients können weiter mit einer stabilen Version arbeiten, während neue Funktionen in einer neuen Version bereitgestellt werden.
+
+### Untersuchte Methoden
+
+| Methode | Beispiel |
+| --- | --- |
+| URL-Versionierung | `/api/v1/tasks` |
+| Request-Parameter | `/api/tasks?version=1` |
+| Header-Versionierung | `X-API-Version: 1` |
+| Media-Type-Versionierung | `Accept: application/vnd.todo.v1+json` |
+
+### Vor- und Nachteile
+
+| Methode | Vorteile | Nachteile |
+| --- | --- | --- |
+| URL-Versionierung | Einfach verständlich, direkt sichtbar, leicht mit Browser/Postman/Insomnia testbar, gut mit Spring `@RequestMapping` umsetzbar | Die URL ändert sich bei neuen Versionen, mehrere Versionen müssen parallel gepflegt werden |
+| Request-Parameter | URL-Pfad bleibt gleich, schnell testbar, ohne spezielle Header nutzbar | Version ist weniger deutlich sichtbar, Parameter können leicht vergessen werden, Routing und Caching werden unübersichtlicher |
+| Header-Versionierung | Saubere Trennung zwischen Ressource und Version, URL bleibt stabil, flexibel für Clients | Im Browser weniger direkt testbar, zusätzliche Header müssen korrekt gesetzt werden, Fehler sind weniger offensichtlich sichtbar |
+| Media-Type-Versionierung | Fachlich präzise über den `Accept`-Header, gut für unterschiedliche Repräsentationen, sehr flexibel | Für kleine Projekte unnötig komplex, schwerer manuell zu testen, höherer Dokumentationsaufwand |
+
+### Bewertung
+
+Bewertung: 1 = schlecht, 5 = sehr gut.
+
+| Methode | Zuverlässigkeit | Einfachheit | Wartbarkeit | Flexibilität | Gesamt |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| URL-Versionierung | 5 | 5 | 4 | 4 | 18 |
+| Request-Parameter | 3 | 4 | 3 | 3 | 13 |
+| Header-Versionierung | 4 | 3 | 4 | 4 | 15 |
+| Media-Type-Versionierung | 4 | 2 | 4 | 5 | 15 |
+
+### Gewählte Methode
+
+Für dieses Projekt wurde die URL-Versionierung gewählt. Sie passt gut zum bestehenden ToDo-Projekt, weil sie einfach verständlich ist, ohne Spezialwerkzeuge getestet werden kann und direkt in Spring Boot über einen Controller-Prefix umgesetzt wird.
+
+Die Version ist in der URL sichtbar. Dadurch ist bei Tests, Fehlersuche und Dokumentation sofort klar, welche API-Version verwendet wird. Für ein überschaubares Schulprojekt ist diese Transparenz wichtiger als die zusätzliche Flexibilität komplexerer Varianten wie Header- oder Media-Type-Versionierung.
+
+### Umsetzung im Projekt
+
+Die Versionierung wurde im Backend im `TaskController` umgesetzt:
+
+```java
+@RestController
+@RequestMapping({ "", "/api/v1" })
+public class TaskController {
+```
+
+Die einzelnen Endpunkte bleiben fachlich gleich, erhalten aber den gemeinsamen Prefix `/api/v1`. Gleichzeitig bleibt die bisherige unversionierte API weiter erreichbar. Dadurch laufen alte Clients weiter, während neue Clients gezielt die versionierte API verwenden können.
+
+Vorher:
+
+```text
+POST /tasks
+```
+
+Nachher:
+
+```text
+POST /api/v1/tasks
+```
+
+Im Frontend wurde die zentrale API-Basis in `frontend/src/App.jsx` angepasst:
+
+```js
+const API_BASE_URL = "/api/v1";
+```
+
+Damit nutzt das aktuelle Frontend bewusst die neue versionierte API. Bestehende Clients, die noch `/tasks`, `/update` oder `/delete` verwenden, können parallel weiterarbeiten.
+
+Der lokale Vite-Proxy leitet `/api`-Requests unverändert an das Backend weiter. Dadurch wird aus `/api/v1/tasks` im Browser auch im Backend `/api/v1/tasks`.
+
+Die Backend- und Frontend-Tests wurden ebenfalls auf die neuen Pfade angepasst. Dadurch prüfen die automatischen Tests, dass die Anwendung die versionierte API verwendet.
+
+### Test der Versionierung
+
+Nach der Anpassung können die Endpunkte lokal so getestet werden:
+
+```sh
+cd backend
+mvn spring-boot:run
+```
+
+In einem zweiten Terminal:
+
+```sh
+curl -i http://localhost:8080/api/v1/
+curl -i -X POST http://localhost:8080/api/v1/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"taskdescription":"API Versionierung testen"}'
+curl -i http://localhost:8080/api/v1/
+```
+
+Für einen Test über das Frontend:
+
+```sh
+cd frontend
+npm run dev
+```
+
+Das Frontend ruft danach die versionierte API über `/api/v1` auf.
+
+### Fazit
+
+Die URL-Versionierung ist für dieses Projekt die passende Lösung. Sie ist zuverlässig, einfach umzusetzen und leicht zu testen. Zukünftige Versionen könnten parallel ergänzt werden, zum Beispiel unter `/api/v2`, ohne bestehende Clients sofort zu brechen.
+
+### Quellen
+
+- Baeldung: Versioning a REST API: https://www.baeldung.com/rest-versioning
+- Baeldung: API Versioning in Spring: https://www.baeldung.com/spring-api-versioning
+- DZone: Versioning a REST API With Spring Boot and Swagger: https://dzone.com/articles/versioning-rest-api-with-spring-boot-and-swagger
+
 ## Bekannte Grenzen
 
 - Keine Task-ID; `taskdescription` ist faktisch der eindeutige Schlüssel.
-- Keine Bearbeiten-Funktion im Frontend, obwohl das Backend `/update` anbietet.
+- Keine Bearbeiten-Funktion im Frontend, obwohl das Backend `/api/v1/update` anbietet.
 - Keine UI-Fehleranzeige, wenn das Backend nicht erreichbar ist.
 - Keine automatische Aktualisierung zwischen mehreren offenen Frontends.
 - Dateibasierte Speicherung ohne Locking.
@@ -490,7 +616,7 @@ Die Artefakte können direkt im jeweiligen GitHub Actions Lauf im Bereich `Artif
 ## Sinnvolle nächste Schritte
 
 1. Task-ID einführen, damit gleiche Beschreibungen möglich werden.
-2. Bearbeiten-Funktion im Frontend an den `/update`-Endpoint anschließen.
+2. Bearbeiten-Funktion im Frontend an den `/api/v1/update`-Endpoint anschließen.
 3. Fehlerzustände im Frontend sichtbar anzeigen.
 4. Speicherpfad konfigurierbar machen, zum Beispiel per Spring Property.
 5. Echte Datenbankpersistenz mit Spring Data JPA implementieren, falls die Anwendung später eine Datenbank verwenden soll.

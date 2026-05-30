@@ -2,7 +2,7 @@
 
 ToDo-Anwendung mit React/Vite-Frontend und Spring-Boot-Backend.
 
-Das Frontend läuft lokal auf Port `5173` und spricht das Backend über relative `/api`-Pfade an. Lokal leitet der Vite-Dev-Proxy diese Requests an `http://localhost:8080` weiter. Im Deployment übernimmt Apache diese Weiterleitung. Das Backend stellt eine einfache REST-API bereit und speichert Tasks als JSON-Datei.
+Das Frontend läuft lokal auf Port `5173` und spricht das Backend über relative, versionierte `/api/v1`-Pfade an. Lokal leitet der Vite-Dev-Proxy diese Requests an `http://localhost:8080` weiter. Im Deployment übernimmt Apache diese Weiterleitung. Das Backend stellt eine einfache REST-API bereit und speichert Tasks als JSON-Datei.
 
 ## Projektstruktur
 
@@ -57,7 +57,7 @@ Das Frontend ist danach normalerweise erreichbar unter:
 http://localhost:5173
 ```
 
-Im lokalen Entwicklungsmodus leitet Vite alle Requests unter `/api` an das Backend unter `http://localhost:8080` weiter.
+Im lokalen Entwicklungsmodus leitet Vite alle Requests unter `/api` unverändert an das Backend unter `http://localhost:8080` weiter.
 
 ## Tests und Builds
 
@@ -82,11 +82,13 @@ Der Backend-Build erzeugt aktuell eine ausführbare Spring-Boot-JAR. In `backend
 ## REST-API
 
 ```text
-GET  /
-POST /tasks
-POST /update
-POST /delete
+GET  /api/v1/
+POST /api/v1/tasks
+POST /api/v1/update
+POST /api/v1/delete
 ```
+
+Die bisherigen unversionierten Endpunkte (`/`, `/tasks`, `/update`, `/delete`) bleiben als Legacy-API parallel erreichbar.
 
 Die API verwendet weiterhin das JSON-Feld `taskdescription`.
 
@@ -128,16 +130,16 @@ backend/data/tasks.json
 Im Deployment wird das gebaute Frontend statisch über Apache ausgeliefert. Das Frontend verwendet keine fest codierten `localhost:8080`-URLs mehr, sondern relative API-Pfade:
 
 ```text
-/api/
-/api/tasks
-/api/delete
+/api/v1/
+/api/v1/tasks
+/api/v1/delete
 ```
 
 Apache muss diese Requests intern an das Spring-Boot-Backend weiterleiten:
 
 ```apache
-ProxyPass /api/ http://localhost:8080/
-ProxyPassReverse /api/ http://localhost:8080/
+ProxyPass /api/ http://localhost:8080/api/
+ProxyPassReverse /api/ http://localhost:8080/api/
 ```
 
 Dafür müssen die Apache-Module `proxy` und `proxy_http` aktiv sein. Der Vorteil dieser Architektur ist, dass `localhost` nur noch serverintern auf dem Deployment-Server ausgewertet wird und nicht im Browser des Clients.

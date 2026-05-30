@@ -3,14 +3,14 @@ import logo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
-const API_BASE_URL = "/api";
+const API_BASE_URL = "/api/v1";
 
 function App() {
   const [count, setCount] = useState(0)
   const [todos, setTodos] = useState([]);
   const [taskdescription, setTaskdescription] = useState("");
 
-  /** Is called when the html form is submitted. It sends a POST request to the API endpoint '/tasks' and updates the component's state with the new todo.
+  /** Is called when the html form is submitted. It sends a POST request to the API endpoint '/api/v1/tasks' and updates the component's state with the new todo.
   ** In this case a new taskdecription is added to the actual list on the server.
   */
   const handleSubmit = event => {
@@ -45,7 +45,7 @@ function App() {
 
 
   /** Is called when the component is mounted (after any refresh or F5).
-  ** It updates the component's state with the fetched todos from the API Endpoint '/'.
+  ** It updates the component's state with the fetched todos from the API Endpoint '/api/v1/'.
   */
   useEffect(() => {
     fetch(`${API_BASE_URL}/`).then(response => response.json()).then(data => {
@@ -54,7 +54,7 @@ function App() {
   }, []);
 
 
- /** Is called when the Done-Button is pressed. It sends a POST request to the API endpoint '/delete' and updates the component's state with the new todo.
+ /** Is called when the Done-Button is pressed. It sends a POST request to the API endpoint '/api/v1/delete' and updates the component's state with the new todo.
   ** In this case if the task with the unique taskdescription is found on the server, it will be removed from the list.
   */
   const handleDelete = (event, taskdescription) => {

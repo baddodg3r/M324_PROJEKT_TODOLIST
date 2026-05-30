@@ -29,15 +29,28 @@ class TaskControllerTests {
 
 	@Test
 	void getTasksReturnsTaskDTOs(@TempDir Path tempDir) throws Exception {
-		// GET / soll die internen Task-Objekte als TaskDTO-JSON an das Frontend zurueckgeben.
+		// GET /api/v1/ soll die internen Task-Objekte als TaskDTO-JSON an das Frontend zurueckgeben.
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 		Task task = createTask("Test Task");
 		taskService.tasks.add(task);
 
-		mockMvc.perform(get("/"))
+		mockMvc.perform(get("/api/v1/"))
 				.andExpect(status().isOk())
 				.andExpect(content().json("[{\"taskdescription\":\"Test Task\"}]"));
+	}
+
+	@Test
+	void getTasksAlsoSupportsLegacyEndpoint(@TempDir Path tempDir) throws Exception {
+		// Der alte Endpoint bleibt erreichbar, damit bestehende Clients nicht sofort brechen.
+		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
+		MockMvc mockMvc = createMockMvc(taskService);
+		Task task = createTask("Legacy Task");
+		taskService.tasks.add(task);
+
+		mockMvc.perform(get("/"))
+				.andExpect(status().isOk())
+				.andExpect(content().json("[{\"taskdescription\":\"Legacy Task\"}]"));
 	}
 
 	@Test
@@ -46,7 +59,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/tasks")
+		mockMvc.perform(post("/api/v1/tasks")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"taskdescription\":\"Neuer Task\"}"))
 				.andExpect(status().isOk())
@@ -56,12 +69,27 @@ class TaskControllerTests {
 	}
 
 	@Test
+	void addTaskAlsoSupportsLegacyEndpoint(@TempDir Path tempDir) throws Exception {
+		// POST /tasks bleibt als Legacy-Route parallel zu POST /api/v1/tasks erreichbar.
+		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
+		MockMvc mockMvc = createMockMvc(taskService);
+
+		mockMvc.perform(post("/tasks")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"taskdescription\":\"Legacy Create\"}"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("redirect:/"));
+
+		assertEquals("Legacy Create", taskService.addedTask.getTaskdescription());
+	}
+
+	@Test
 	void addTaskReturnsBadRequestForMissingTaskdescription(@TempDir Path tempDir) throws Exception {
 		// Ohne taskdescription ist der Request fachlich ungueltig und soll 400 zurueckgeben.
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/tasks")
+		mockMvc.perform(post("/api/v1/tasks")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{}"))
 				.andExpect(status().isBadRequest());
@@ -76,7 +104,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/tasks")
+		mockMvc.perform(post("/api/v1/tasks")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"taskdescription\":\"\"}"))
 				.andExpect(status().isBadRequest());
@@ -91,7 +119,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/tasks")
+		mockMvc.perform(post("/api/v1/tasks")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("not valid json"))
 				.andExpect(status().isBadRequest());
@@ -106,7 +134,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/update")
+		mockMvc.perform(post("/api/v1/update")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"oldTaskdescription\":\"Alt\",\"taskdescription\":\"Neu\"}"))
 				.andExpect(status().isOk())
@@ -117,12 +145,28 @@ class TaskControllerTests {
 	}
 
 	@Test
+	void updateTaskAlsoSupportsLegacyEndpoint(@TempDir Path tempDir) throws Exception {
+		// POST /update bleibt parallel zur versionierten Route erreichbar.
+		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
+		MockMvc mockMvc = createMockMvc(taskService);
+
+		mockMvc.perform(post("/update")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"oldTaskdescription\":\"Alt\",\"taskdescription\":\"Legacy Neu\"}"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("redirect:/"));
+
+		assertEquals("Alt", taskService.updatedTask.getOldTaskdescription());
+		assertEquals("Legacy Neu", taskService.updatedTask.getTaskdescription());
+	}
+
+	@Test
 	void updateTaskReturnsBadRequestForMissingOldTaskdescription(@TempDir Path tempDir) throws Exception {
 		// Ohne alten Tasktext weiss das Backend nicht, welcher Task bearbeitet werden soll.
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/update")
+		mockMvc.perform(post("/api/v1/update")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"taskdescription\":\"Neu\"}"))
 				.andExpect(status().isBadRequest());
@@ -137,7 +181,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/update")
+		mockMvc.perform(post("/api/v1/update")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"oldTaskdescription\":\"Alt\"}"))
 				.andExpect(status().isBadRequest());
@@ -152,7 +196,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/update")
+		mockMvc.perform(post("/api/v1/update")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"oldTaskdescription\":\"Alt\",\"taskdescription\":\"\"}"))
 				.andExpect(status().isBadRequest());
@@ -167,7 +211,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/delete")
+		mockMvc.perform(post("/api/v1/delete")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"taskdescription\":\"Zu loeschen\"}"))
 				.andExpect(status().isOk())
@@ -177,12 +221,27 @@ class TaskControllerTests {
 	}
 
 	@Test
+	void deleteTaskAlsoSupportsLegacyEndpoint(@TempDir Path tempDir) throws Exception {
+		// POST /delete bleibt parallel zur versionierten Route erreichbar.
+		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
+		MockMvc mockMvc = createMockMvc(taskService);
+
+		mockMvc.perform(post("/delete")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"taskdescription\":\"Legacy Delete\"}"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("redirect:/"));
+
+		assertEquals("Legacy Delete", taskService.deletedTask.getTaskdescription());
+	}
+
+	@Test
 	void deleteTaskReturnsBadRequestForMissingTaskdescription(@TempDir Path tempDir) throws Exception {
 		// Ohne taskdescription weiss das Backend nicht, welcher Task geloescht werden soll.
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/delete")
+		mockMvc.perform(post("/api/v1/delete")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{}"))
 				.andExpect(status().isBadRequest());
@@ -197,7 +256,7 @@ class TaskControllerTests {
 		FakeTaskService taskService = new FakeTaskService(tempDir.resolve("tasks.json"));
 		MockMvc mockMvc = createMockMvc(taskService);
 
-		mockMvc.perform(post("/delete")
+		mockMvc.perform(post("/api/v1/delete")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"taskdescription\":\"\"}"))
 				.andExpect(status().isBadRequest());
