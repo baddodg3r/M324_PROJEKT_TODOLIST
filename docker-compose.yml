@@ -1,0 +1,17 @@
+services:
+  backend:
+    image: ghcr.io/baddodg3r/m324-projekt-todolist-backend:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend-data:/app/data
+
+  frontend:
+    image: ghcr.io/baddodg3r/m324-projekt-todolist-frontend:latest
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:

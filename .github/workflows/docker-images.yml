@@ -1,0 +1,63 @@
+# Baut die Docker-Images fuer Frontend und Backend und pusht sie nach GHCR.
+name: Build and Push Docker Images
+
+run-name: Docker Images ${{ github.ref_name }} by ${{ github.actor }}
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  FRONTEND_IMAGE_NAME: ${{ github.repository_owner }}/m324-projekt-todolist-frontend
+  BACKEND_IMAGE_NAME: ${{ github.repository_owner }}/m324-projekt-todolist-backend
+
+jobs:
+  docker-build-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-24.04
+
+    steps:
+      # Holt den aktuellen Repository-Stand in den GitHub Actions Runner.
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # Richtet Docker Buildx ein. Buildx wird von docker/build-push-action verwendet.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Meldet den Workflow an der GitHub Container Registry an.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Baut und pusht das Frontend-Image.
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+
+      # Baut und pusht das Backend-Image.
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
