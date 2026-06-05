@@ -1,5 +1,5 @@
-# Baut die Docker-Images fuer Frontend und Backend und pusht sie nach GHCR.
-name: Build and Push Docker Images
+# Baut, prueft und pusht die Docker-Images fuer Frontend und Backend nach GHCR.
+name: Build, Scan and Push Docker Images
 
 run-name: Docker Images ${{ github.ref_name }} by ${{ github.actor }}
 
@@ -19,8 +19,8 @@ env:
   BACKEND_IMAGE_NAME: ${{ github.repository_owner }}/m324-projekt-todolist-backend
 
 jobs:
-  docker-build-push:
-    name: Build and Push Docker Images
+  docker-build-scan-push:
+    name: Build, Scan and Push Docker Images
     runs-on: ubuntu-24.04
 
     steps:
@@ -40,24 +40,82 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Baut und pusht das Frontend-Image.
-      - name: Build and push frontend image
+      # Baut das Frontend-Image lokal. Der Push erfolgt erst nach dem Security Scan.
+      - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          push: true
+          load: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
 
-      # Baut und pusht das Backend-Image.
-      - name: Build and push backend image
+      # Baut das Backend-Image lokal. Der Push erfolgt erst nach dem Security Scan.
+      - name: Build backend image
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          push: true
+          load: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+
+      # Aufgabe 9a Start: Security Scan fuer Docker Container
+      # Trivy scannt die lokal gebauten Images auf bekannte Schwachstellen.
+      # HIGH und CRITICAL Findings werden im Workflow ausgegeben.
+      - name: Scan frontend image for security warnings
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: 0
+
+      - name: Scan backend image for security warnings
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: 0
+
+      # Kritische Schwachstellen blockieren den Push, damit keine eindeutig
+      # unsicheren Images in die Registry veroeffentlicht werden.
+      - name: Fail on critical frontend vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+          vuln-type: os,library
+          severity: CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: 1
+
+      - name: Fail on critical backend vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          vuln-type: os,library
+          severity: CRITICAL
+          ignore-unfixed: true
+          format: table
+          exit-code: 1
+      # Aufgabe 9a Ende: Security Scan fuer Docker Container
+
+      # Pusht das Frontend-Image nur, wenn der Security Scan erfolgreich war.
+      - name: Push frontend image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+
+      # Pusht das Backend-Image nur, wenn der Security Scan erfolgreich war.
+      - name: Push backend image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
