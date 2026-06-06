@@ -8,7 +8,7 @@ COPY src ./src
 
 RUN mvn -B clean package
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
